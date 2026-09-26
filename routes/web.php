@@ -8,6 +8,7 @@ use App\Http\Controllers\PengirimanController;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LaporanController;
 
 // ---------- Halaman utama ----------
 Route::get('/', function () {
@@ -58,11 +59,12 @@ Route::middleware(['auth', 'role:KURIR'])->group(function () {
     Route::patch('pesanan/{idPesanan}/terkirim', [PengirimanController::class, 'tandaiTerkirim'])->name('pengiriman.tandaiTerkirim');
 });
 
-// ---------- Khusus Owner: kelola akun Admin ----------
+// ---------- Khusus Owner: kelola akun Admin & laporan penjualan ----------
 Route::middleware(['auth', 'role:OWNER'])->group(function () {
     Route::get('user', [UserController::class, 'index'])->name('user.index');
     Route::get('user/create', [UserController::class, 'create'])->name('user.create');
     Route::post('user', [UserController::class, 'store'])->name('user.store');
     Route::patch('user/{id}/nonaktifkan', [UserController::class, 'nonaktifkan'])->name('user.nonaktifkan');
     Route::patch('user/{id}/aktifkan', [UserController::class, 'aktifkan'])->name('user.aktifkan');
+    Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
 });
