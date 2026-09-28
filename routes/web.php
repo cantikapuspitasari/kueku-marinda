@@ -9,11 +9,14 @@ use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\HealthCheckController;
 
 // ---------- Halaman utama ----------
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('healthcheck', [HealthCheckController::class, 'index'])->name('healthcheck');
 
 // ---------- Auth (bebas diakses siapa saja) ----------
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
