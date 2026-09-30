@@ -8,6 +8,7 @@ use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\StorePesananRequest;
 
 class PesananController extends Controller
 {
@@ -39,21 +40,11 @@ class PesananController extends Controller
     }
 
     // Simpan pesanan baru + detail item-nya sekaligus
-    public function store(Request $request)
+    // S2-05: validasi input sudah dipindahkan ke StorePesananRequest (termasuk aturan
+    // tanggal tidak boleh masa lalu dan alamat wajib untuk delivery)
+    public function store(StorePesananRequest $request)
     {
-        $validated = $request->validate([
-            'id_alamat'          => 'nullable|exists:alamat,id_alamat',
-            'tanggal_ambil'      => 'required|date|after_or_equal:today',
-            'jenis_pengambilan'  => 'required|in:PICKUP,DELIVERY',
-            'items'              => 'required|array|min:1',
-            'items.*.id_produk'  => 'required|exists:produk,id_produk',
-            'items.*.jumlah'     => 'required|integer|min:1',
-        ]);
-
-        // Kalau delivery, alamat wajib diisi
-        if ($validated['jenis_pengambilan'] === 'DELIVERY' && empty($validated['id_alamat'])) {
-            return back()->withErrors(['id_alamat' => 'Alamat wajib diisi untuk pesanan delivery']);
-        }
+        $validated = $request->validated();
 
         try {
             // Simpan pesanan + detail dalam satu transaction, biar kalau ada yang gagal, semua dibatalkan (rollback)
@@ -97,56 +88,4 @@ class PesananController extends Controller
                     'kode_pesanan'      => $kodePesanan,
                     'id_user'           => Auth::id(),
                     'id_alamat'         => $validated['id_alamat'] ?? null,
-                    'tanggal_ambil'     => $validated['tanggal_ambil'],
-                    'jenis_pengambilan' => $validated['jenis_pengambilan'],
-                    'status_pesanan'    => 'PENDING',
-                    'total_harga'       => $totalHarga,
-                ]);
-
-                // Simpan tiap item ke detail_pesanan, sekalian kurangi stok
-                foreach ($items as $item) {
-                    DetailPesanan::create([
-                        'id_pesanan' => $pesananBaru->id_pesanan,
-                        'id_produk'  => $item['id_produk'],
-                        'jumlah'     => $item['jumlah'],
-                        'subtotal'   => $item['subtotal'],
-                    ]);
-
-                    // Masih di dalam baris yang sudah terkunci -> aman dari race condition
-                    Produk::where('id_produk', $item['id_produk'])->decrement('stok', $item['jumlah']);
-                }
-
-                return $pesananBaru;
-            });
-
-            return redirect()->route('pesanan.show', $pesanan->id_pesanan)
-                ->with('success', 'Pesanan berhasil dibuat dengan kode ' . $pesanan->kode_pesanan);
-
-        } catch (\Exception $e) {
-            // S2-06 DoD: pesanan kedua yang bentrok stok otomatis DITOLAK, bukan crash
-            return back()->withInput()->with('error', $e->getMessage());
-        }
-    }
-
-    // Detail 1 pesanan
-    public function show($id)
-    {
-        $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli', 'alamat', 'pembayaran', 'pengiriman'])
-            ->findOrFail($id);
-
-        return view('pesanan.show', compact('pesanan'));
-    }
-
-    // Update status pesanan (dipakai Admin)
-    public function updateStatus(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'status_pesanan' => 'required|in:PENDING,DIKONFIRMASI,DIPROSES,SELESAI,DIBATALKAN',
-        ]);
-
-        $pesanan = Pesanan::findOrFail($id);
-        $pesanan->update($validated);
-
-        return back()->with('success', 'Status pesanan berhasil diperbarui');
-    }
-}
+                    'tanggal_ambil'     => $validated['tanggal_a
