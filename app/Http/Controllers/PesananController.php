@@ -55,63 +55,77 @@ class PesananController extends Controller
             return back()->withErrors(['id_alamat' => 'Alamat wajib diisi untuk pesanan delivery']);
         }
 
-        // Simpan pesanan + detail dalam satu transaction, biar kalau ada yang gagal, semua dibatalkan (rollback)
-        $pesanan = DB::transaction(function () use ($validated) {
+        try {
+            // Simpan pesanan + detail dalam satu transaction, biar kalau ada yang gagal, semua dibatalkan (rollback)
+            $pesanan = DB::transaction(function () use ($validated) {
 
-            $totalHarga = 0;
-            $items = [];
+                $totalHarga = 0;
+                $items = [];
 
-            // Hitung subtotal tiap item dulu, sekalian validasi stok
-            foreach ($validated['items'] as $item) {
-                $produk = Produk::findOrFail($item['id_produk']);
+                foreach ($validated['items'] as $item) {
+                    // S2-06: lockForUpdate() mengunci baris produk ini sampai transaksi selesai.
+                    // Pembeli lain yang coba pesan produk yang sama HARUS menunggu giliran,
+                    // sehingga stok tidak pernah dibaca dua kali sebelum sempat dikurangi (anti-oversell).
+                    $produk = Produk::where('id_produk', $item['id_produk'])
+                        ->lockForUpdate()
+                        ->first();
 
-                if ($produk->status_produk !== 'TERSEDIA') {
-                    throw new \Exception("Produk {$produk->nama_produk} sedang tidak tersedia");
+                    if (!$produk) {
+                        throw new \Exception("Produk tidak ditemukan");
+                    }
+                    if ($produk->status_produk !== 'TERSEDIA') {
+                        throw new \Exception("Produk {$produk->nama_produk} sedang tidak tersedia");
+                    }
+                    if ($produk->stok < $item['jumlah']) {
+                        throw new \Exception("Stok {$produk->nama_produk} tidak cukup (tersisa {$produk->stok})");
+                    }
+
+                    $subtotal = $produk->harga * $item['jumlah'];
+                    $totalHarga += $subtotal;
+
+                    $items[] = [
+                        'id_produk' => $produk->id_produk,
+                        'jumlah'    => $item['jumlah'],
+                        'subtotal'  => $subtotal,
+                    ];
                 }
-                if ($produk->stok < $item['jumlah']) {
-                    throw new \Exception("Stok {$produk->nama_produk} tidak cukup");
-                }
 
-                $subtotal = $produk->harga * $item['jumlah'];
-                $totalHarga += $subtotal;
+                // Bikin kode pesanan otomatis: KM-YYYYMMDD-XXX
+                $kodePesanan = 'KM-' . now()->format('Ymd') . '-' . str_pad(Pesanan::count() + 1, 3, '0', STR_PAD_LEFT);
 
-                $items[] = [
-                    'id_produk' => $produk->id_produk,
-                    'jumlah'    => $item['jumlah'],
-                    'subtotal'  => $subtotal,
-                ];
-            }
-
-            // Bikin kode pesanan otomatis: KM-YYYYMMDD-XXX
-            $kodePesanan = 'KM-' . now()->format('Ymd') . '-' . str_pad(Pesanan::count() + 1, 3, '0', STR_PAD_LEFT);
-
-            $pesananBaru = Pesanan::create([
-                'kode_pesanan'      => $kodePesanan,
-                'id_user'           => Auth::id(),
-                'id_alamat'         => $validated['id_alamat'] ?? null,
-                'tanggal_ambil'     => $validated['tanggal_ambil'],
-                'jenis_pengambilan' => $validated['jenis_pengambilan'],
-                'status_pesanan'    => 'PENDING',
-                'total_harga'       => $totalHarga,
-            ]);
-
-            // Simpan tiap item ke detail_pesanan, sekalian kurangi stok
-            foreach ($items as $item) {
-                DetailPesanan::create([
-                    'id_pesanan' => $pesananBaru->id_pesanan,
-                    'id_produk'  => $item['id_produk'],
-                    'jumlah'     => $item['jumlah'],
-                    'subtotal'   => $item['subtotal'],
+                $pesananBaru = Pesanan::create([
+                    'kode_pesanan'      => $kodePesanan,
+                    'id_user'           => Auth::id(),
+                    'id_alamat'         => $validated['id_alamat'] ?? null,
+                    'tanggal_ambil'     => $validated['tanggal_ambil'],
+                    'jenis_pengambilan' => $validated['jenis_pengambilan'],
+                    'status_pesanan'    => 'PENDING',
+                    'total_harga'       => $totalHarga,
                 ]);
 
-                Produk::where('id_produk', $item['id_produk'])->decrement('stok', $item['jumlah']);
-            }
+                // Simpan tiap item ke detail_pesanan, sekalian kurangi stok
+                foreach ($items as $item) {
+                    DetailPesanan::create([
+                        'id_pesanan' => $pesananBaru->id_pesanan,
+                        'id_produk'  => $item['id_produk'],
+                        'jumlah'     => $item['jumlah'],
+                        'subtotal'   => $item['subtotal'],
+                    ]);
 
-            return $pesananBaru;
-        });
+                    // Masih di dalam baris yang sudah terkunci -> aman dari race condition
+                    Produk::where('id_produk', $item['id_produk'])->decrement('stok', $item['jumlah']);
+                }
 
-        return redirect()->route('pesanan.show', $pesanan->id_pesanan)
-            ->with('success', 'Pesanan berhasil dibuat dengan kode ' . $pesanan->kode_pesanan);
+                return $pesananBaru;
+            });
+
+            return redirect()->route('pesanan.show', $pesanan->id_pesanan)
+                ->with('success', 'Pesanan berhasil dibuat dengan kode ' . $pesanan->kode_pesanan);
+
+        } catch (\Exception $e) {
+            // S2-06 DoD: pesanan kedua yang bentrok stok otomatis DITOLAK, bukan crash
+            return back()->withInput()->with('error', $e->getMessage());
+        }
     }
 
     // Detail 1 pesanan
