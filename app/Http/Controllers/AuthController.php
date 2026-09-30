@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,12 +18,10 @@ class AuthController extends Controller
     }
 
     // Proses login
-    public function login(Request $request)
+    // S2-05: validasi dipindahkan ke LoginRequest
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
-        ]);
+        $credentials = $request->validated();
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
@@ -45,14 +45,10 @@ class AuthController extends Controller
     }
 
     // Proses registrasi (role otomatis PEMBELI, sesuai use case awal)
-    public function register(Request $request)
+    // S2-05: validasi dipindahkan ke RegisterRequest
+    public function register(RegisterRequest $request)
     {
-        $validated = $request->validate([
-            'nama'       => 'required|string|max:100',
-            'email'      => 'required|email|unique:users,email',
-            'password'   => 'required|min:6|confirmed',
-            'no_telepon' => 'required|string|max:20',
-        ]);
+        $validated = $request->validated();
 
         $user = User::create([
             'nama'       => $validated['nama'],
