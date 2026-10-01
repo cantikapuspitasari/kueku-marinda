@@ -7,14 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class Pesanan extends Model
 {
     protected $table = 'pesanan';
-
     protected $primaryKey = 'id_pesanan';
-
     public $timestamps = false;
 
     protected $fillable = [
         'kode_pesanan',
-        'id_user',
+        'id_pembeli',
         'id_alamat',
         'tanggal_pesan',
         'tanggal_ambil',
@@ -23,59 +21,30 @@ class Pesanan extends Model
         'total_harga',
     ];
 
-    protected $casts = [
-        'tanggal_pesan' => 'datetime',
-        'tanggal_ambil' => 'date',
-        'total_harga' => 'decimal:2',
-    ];
+    // ---------- Relasi ----------
 
-    // Pesanan dibuat oleh satu user/pembeli
-    public function user()
+    public function pembeli()
     {
-        return $this->belongsTo(
-            User::class,
-            'id_user',
-            'id_user'
-        );
+        return $this->belongsTo(Pembeli::class, 'id_pembeli', 'id_pembeli');
     }
 
-    // Pesanan menggunakan satu alamat
     public function alamat()
     {
-        return $this->belongsTo(
-            Alamat::class,
-            'id_alamat',
-            'id_alamat'
-        );
+        return $this->belongsTo(Alamat::class, 'id_alamat', 'id_alamat');
     }
 
-    // Satu pesanan memiliki banyak detail produk
     public function detailPesanan()
     {
-        return $this->hasMany(
-            DetailPesanan::class,
-            'id_pesanan',
-            'id_pesanan'
-        );
+        return $this->hasMany(DetailPesanan::class, 'id_pesanan', 'id_pesanan');
     }
 
-    // Satu pesanan memiliki satu pembayaran
     public function pembayaran()
     {
-        return $this->hasOne(
-            Pembayaran::class,
-            'id_pesanan',
-            'id_pesanan'
-        );
+        return $this->hasOne(Pembayaran::class, 'id_pesanan', 'id_pesanan');
     }
 
-    // Satu pesanan memiliki satu pengiriman
     public function pengiriman()
     {
-        return $this->hasOne(
-            Pengiriman::class,
-            'id_pesanan',
-            'id_pesanan'
-        );
+        return $this->hasOne(Pengiriman::class, 'id_pesanan', 'id_pesanan');
     }
 }

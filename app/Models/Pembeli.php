@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Authenticatable
+class Pembeli extends Authenticatable
 {
-    protected $table = 'users';
-    protected $primaryKey = 'id_user';
+    protected $table = 'pembeli';
+    protected $primaryKey = 'id_pembeli';
     public $timestamps = false;
 
     protected $fillable = [
@@ -15,7 +15,6 @@ class User extends Authenticatable
         'email',
         'password',
         'no_telepon',
-        'role',
         'status_akun',
     ];
 
@@ -23,21 +22,20 @@ class User extends Authenticatable
         'password',
     ];
 
+    // Tabel tidak punya remember_token, fitur "remember me" dimatikan
     public function getRememberToken() { return null; }
     public function setRememberToken($value) {}
     public function getRememberTokenName() { return ''; }
 
     // ---------- Relasi ----------
-    // Catatan: User (staf) tidak lagi punya relasi ke Alamat/Pesanan,
-    // karena itu sekarang milik Pembeli.
 
-    public function pembayaranDiterima()
+    public function alamat()
     {
-        return $this->hasMany(Pembayaran::class, 'id_user', 'id_user');
+        return $this->hasMany(Alamat::class, 'id_pembeli', 'id_pembeli');
     }
 
-    public function pengiriman()
+    public function pesanan()
     {
-        return $this->hasMany(Pengiriman::class, 'id_user', 'id_user');
+        return $this->hasMany(Pesanan::class, 'id_pembeli', 'id_pembeli');
     }
 }
