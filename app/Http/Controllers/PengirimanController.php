@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pengiriman;
 use App\Models\Pesanan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PengirimanController extends Controller
 {
@@ -21,19 +22,17 @@ class PengirimanController extends Controller
     // Kurir menandai sudah ambil pesanan dari toko
     public function ambilDariToko(Request $request, $idPesanan)
     {
-        $validated = $request->validate([
-            'id_kurir' => 'required|exists:users,id_user',
-        ]);
-
         $pesanan = Pesanan::findOrFail($idPesanan);
+        $idKurir = Auth::guard('web')->id();
 
         // Bikin record pengiriman kalau belum ada, atau ambil yang sudah ada
         $pengiriman = Pengiriman::firstOrCreate(
             ['id_pesanan' => $pesanan->id_pesanan],
-            ['id_kurir' => $validated['id_kurir']]
+            ['id_user' => $idKurir]
         );
 
         $pengiriman->update([
+            'id_user'           => $idKurir,
             'status_pengiriman' => 'DIAMBIL_KURIR',
             'waktu_diambil'     => now()->toDateString(),
         ]);

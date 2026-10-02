@@ -6,15 +6,15 @@ use App\Models\Pembayaran;
 use App\Models\Pesanan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class PembayaranController extends Controller
 {
     // Mencatat pembayaran tunai untuk sebuah pesanan
-    // Dipanggil oleh Admin (saat pickup) atau Kurir (saat delivery)
+    // Dipanggil oleh Admin (saat pickup) atau Kurir (saat delivery) yang sedang login
     public function store(Request $request, $idPesanan)
     {
         $validated = $request->validate([
-            'id_penerima'       => 'required|exists:users,id_user',
             'tempat_pembayaran' => 'required|in:TOKO,ALAMAT_PEMBELI',
         ]);
 
@@ -25,10 +25,12 @@ class PembayaranController extends Controller
             return back()->withErrors(['pesanan' => 'Pesanan ini sudah tercatat pembayarannya']);
         }
 
-        DB::transaction(function () use ($pesanan, $validated) {
+        $idStaf = Auth::guard('web')->id();
+
+        DB::transaction(function () use ($pesanan, $validated, $idStaf) {
             Pembayaran::create([
                 'id_pesanan'        => $pesanan->id_pesanan,
-                'id_penerima'       => $validated['id_penerima'],
+                'id_user'           => $idStaf,
                 'jumlah_bayar'      => $pesanan->total_harga,
                 'tempat_pembayaran' => $validated['tempat_pembayaran'],
             ]);
