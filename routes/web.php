@@ -18,12 +18,18 @@ Route::get('/', function () {
 
 Route::get('healthcheck', [HealthCheckController::class, 'index'])->name('healthcheck');
 
-// ---------- Auth (bebas diakses siapa saja) ----------
+// ---------- Auth Pembeli (publik) ----------
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login']);
 Route::get('register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('register', [AuthController::class, 'register']);
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+// ---------- Auth Staf (Admin/Owner/Kurir) ----------
+Route::get('staff/login', [AuthController::class, 'showLoginStaff'])->name('staff.login');
+Route::post('staff/login', [AuthController::class, 'loginStaff']);
+Route::post('staff/logout', [AuthController::class, 'logoutStaff'])->name('staff.logout');
+
 
 // ---------- Produk & Kategori: boleh dilihat siapa saja (termasuk belum login) ----------
 Route::get('produk', [ProdukController::class, 'index'])->name('produk.index');
@@ -31,11 +37,11 @@ Route::get('produk/{produk}', [ProdukController::class, 'show'])->name('produk.s
 Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
 Route::get('kategori/{kategori}', [KategoriController::class, 'show'])->name('kategori.show');
 
-// ---------- Semua yang sudah login (peran apapun) ----------
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:pembeli')->group(function () {
     Route::resource('pesanan', PesananController::class)->except(['edit', 'update', 'destroy']);
     Route::get('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'show'])->name('pembayaran.show');
 });
+
 
 // ---------- Khusus Admin: kelola produk & kategori, verifikasi pesanan ----------
 Route::middleware(['auth', 'role:ADMIN'])->group(function () {

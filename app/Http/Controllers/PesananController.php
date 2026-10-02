@@ -12,22 +12,15 @@ use App\Http\Requests\StorePesananRequest;
 
 class PesananController extends Controller
 {
-    // Menampilkan daftar pesanan (beda isi tergantung role: pembeli lihat punya sendiri, admin lihat semua)
+    // Menampilkan daftar pesanan milik pembeli yang sedang login
     public function index()
     {
-        $user = Auth::user();
+        $pembeli = Auth::guard('pembeli')->user();
 
-        if ($user->role === 'PEMBELI') {
-            $pesanan = Pesanan::with('detailPesanan.produk')
-                ->where('id_user', $user->id_user)
-                ->orderBy('tanggal_pesan', 'desc')
-                ->get();
-        } else {
-            // Admin/Owner lihat semua pesanan
-            $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli'])
-                ->orderBy('tanggal_pesan', 'desc')
-                ->get();
-        }
+        $pesanan = Pesanan::with('detailPesanan.produk')
+            ->where('id_pembeli', $pembeli->id_pembeli)
+            ->orderBy('tanggal_pesan', 'desc')
+            ->get();
 
         return view('pesanan.index', compact('pesanan'));
     }
@@ -40,14 +33,12 @@ class PesananController extends Controller
     }
 
     // Simpan pesanan baru + detail item-nya sekaligus
-    // S2-05: validasi input sudah dipindahkan ke StorePesananRequest (termasuk aturan
-    // tanggal tidak boleh masa lalu dan alamat wajib untuk delivery)
+    // S2-05: validasi input sudah dipindahkan ke StorePesananRequest
     public function store(StorePesananRequest $request)
     {
         $validated = $request->validated();
 
         try {
-            // Simpan pesanan + detail dalam satu transaction, biar kalau ada yang gagal, semua dibatalkan (rollback)
             $pesanan = DB::transaction(function () use ($validated) {
 
                 $totalHarga = 0;
@@ -81,11 +72,59 @@ class PesananController extends Controller
                     ];
                 }
 
-                // Bikin kode pesanan otomatis: KM-YYYYMMDD-XXX
                 $kodePesanan = 'KM-' . now()->format('Ymd') . '-' . str_pad(Pesanan::count() + 1, 3, '0', STR_PAD_LEFT);
 
                 $pesananBaru = Pesanan::create([
                     'kode_pesanan'      => $kodePesanan,
-                    'id_user'           => Auth::id(),
+                    'id_pembeli'        => Auth::guard('pembeli')->id(),
                     'id_alamat'         => $validated['id_alamat'] ?? null,
-                    'tanggal_ambil'     => $validated['tanggal_a
+                    'tanggal_ambil'     => $validated['tanggal_ambil'],
+                    'jenis_pengambilan' => $validated['jenis_pengambilan'],
+                    'status_pesanan'    => 'PENDING',
+                    'total_harga'       => $totalHarga,
+                ]);
+
+                foreach ($items as $item) {
+                    DetailPesanan::create([
+                        'id_pesanan' => $pesananBaru->id_pesanan,
+                        'id_produk'  => $item['id_produk'],
+                        'jumlah'     => $item['jumlah'],
+                        'subtotal'   => $item['subtotal'],
+                    ]);
+
+                    Produk::where('id_produk', $item['id_produk'])->decrement('stok', $item['jumlah']);
+                }
+
+                return $pesananBaru;
+            });
+
+            return redirect()->route('pesanan.show', $pesanan->id_pesanan)
+                ->with('success', 'Pesanan berhasil dibuat dengan kode ' . $pesanan->kode_pesanan);
+
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+    }
+
+    // Detail 1 pesanan
+    public function show($id)
+    {
+        $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli', 'alamat', 'pembayaran', 'pengiriman'])
+            ->findOrFail($id);
+
+        return view('pesanan.show', compact('pesanan'));
+    }
+
+    // Update status pesanan (dipakai Admin)
+    public function updateStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status_pesanan' => 'required|in:PENDING,DIKONFIRMASI,DIPROSES,SELESAI,DIBATALKAN',
+        ]);
+
+        $pesanan = Pesanan::findOrFail($id);
+        $pesanan->update($validated);
+
+        return back()->with('success', 'Status pesanan berhasil diperbarui');
+    }
+}
