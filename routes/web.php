@@ -59,7 +59,13 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 
     Route::patch('pesanan/{id}/status', [PesananController::class, 'updateStatus'])->name('pesanan.updateStatus');
     Route::post('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'store'])->name('pembayaran.store');
+
 });
+
+Route::middleware(['auth', 'role:ADMIN,OWNER'])->group(function () {
+    Route::get('admin/pesanan', [PesananController::class, 'indexStaff'])->name('pesanan.indexStaff');
+});
+
 
 // ---------- Khusus Kurir: pengiriman ----------
 Route::middleware(['auth', 'role:KURIR'])->group(function () {

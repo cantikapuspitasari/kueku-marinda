@@ -127,4 +127,13 @@ class PesananController extends Controller
 
         return back()->with('success', 'Status pesanan berhasil diperbarui');
     }
+// Daftar SEMUA pesanan - khusus Admin & Owner
+    public function indexStaff()
+    {
+        $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli'])
+            ->orderBy('tanggal_pesan', 'desc')
+            ->get();
+
+        return view('pesanan.index-staff', compact('pesanan'));
+    }
 }
