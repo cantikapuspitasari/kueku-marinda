@@ -5,23 +5,24 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-    // Daftar semua akun Admin (untuk Owner)
+    // Daftar semua akun staf (Admin, Owner, Kurir) - untuk Owner
     public function index()
     {
-        $admins = User::where('role', 'ADMIN')->get();
-        return view('user.index', compact('admins'));
+        $users = User::orderBy('role')->orderBy('nama')->get();
+        return view('user.index', compact('users'));
     }
 
-    // Form tambah akun Admin baru
+    // Form tambah akun staf baru
     public function create()
     {
         return view('user.create');
     }
 
-    // Simpan akun Admin baru
+    // Simpan akun staf baru (role dipilih dari form: ADMIN/OWNER/KURIR)
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -29,6 +30,7 @@ class UserController extends Controller
             'email'      => 'required|email|unique:users,email',
             'password'   => 'required|min:6',
             'no_telepon' => 'required|string|max:20',
+            'role'       => 'required|in:ADMIN,OWNER,KURIR',
         ]);
 
         User::create([
@@ -36,28 +38,34 @@ class UserController extends Controller
             'email'       => $validated['email'],
             'password'    => Hash::make($validated['password']),
             'no_telepon'  => $validated['no_telepon'],
-            'role'        => 'ADMIN',
+            'role'        => $validated['role'],
             'status_akun' => 'AKTIF',
         ]);
 
-        return redirect()->route('user.index')->with('success', 'Akun Admin berhasil ditambahkan');
+        return redirect()->route('user.index')->with('success', 'Akun staf berhasil ditambahkan');
     }
 
-    // Nonaktifkan akun Admin
+    // Nonaktifkan akun staf
     public function nonaktifkan($id)
     {
-        $user = User::where('role', 'ADMIN')->findOrFail($id);
+        $user = User::findOrFail($id);
+
+        // Owner tidak boleh menonaktifkan akunnya sendiri (hindari terkunci dari sistem)
+        if ($user->id_user === Auth::guard('web')->id()) {
+            return back()->withErrors(['user' => 'Anda tidak dapat menonaktifkan akun Anda sendiri']);
+        }
+
         $user->update(['status_akun' => 'NONAKTIF']);
 
-        return back()->with('success', 'Akun Admin berhasil dinonaktifkan');
+        return back()->with('success', 'Akun staf berhasil dinonaktifkan');
     }
 
-    // Aktifkan kembali akun Admin
+    // Aktifkan kembali akun staf
     public function aktifkan($id)
     {
-        $user = User::where('role', 'ADMIN')->findOrFail($id);
+        $user = User::findOrFail($id);
         $user->update(['status_akun' => 'AKTIF']);
 
-        return back()->with('success', 'Akun Admin berhasil diaktifkan');
+        return back()->with('success', 'Akun staf berhasil diaktifkan');
     }
 }
