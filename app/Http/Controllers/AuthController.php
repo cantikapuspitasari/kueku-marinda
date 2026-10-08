@@ -23,18 +23,34 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
-        if (Auth::guard('pembeli')->attempt($credentials)) {
+        // Status AKTIF menjadi syarat login.
+        // Akun NONAKTIF tidak akan dibuatkan sesi.
+        if (Auth::guard('pembeli')->attempt($credentials + ['status_akun' => 'AKTIF'])) {
             $request->session()->regenerate();
-
-            if (Auth::guard('pembeli')->user()->status_akun === 'NONAKTIF') {
-                Auth::guard('pembeli')->logout();
-                return back()->withErrors(['email' => 'Akun Anda telah dinonaktifkan']);
-            }
 
             return redirect()->intended('/');
         }
 
-        return back()->withErrors(['email' => 'Email atau password salah']);
+        // Beritahu "dinonaktifkan" hanya kalau password benar.
+        $akun = Pembeli::where('email', $credentials['email'])->first();
+
+        if (
+            $akun &&
+            $akun->status_akun === 'NONAKTIF' &&
+            Hash::check($credentials['password'], $akun->password)
+        ) {
+            return back()
+                ->withErrors([
+                    'email' => 'Akun Anda telah dinonaktifkan'
+                ])
+                ->onlyInput('email');
+        }
+
+        return back()
+            ->withErrors([
+                'email' => 'Email atau password salah'
+            ])
+            ->onlyInput('email');
     }
 
     public function showRegister()
@@ -47,26 +63,29 @@ class AuthController extends Controller
         $validated = $request->validated();
 
         $pembeli = Pembeli::create([
-            'nama'       => $validated['nama'],
-            'email'      => $validated['email'],
-            'password'   => Hash::make($validated['password']),
-            'no_telepon' => $validated['no_telepon'],
-            'status_akun'=> 'AKTIF',
+            'nama'        => $validated['nama'],
+            'email'       => $validated['email'],
+            'password'    => Hash::make($validated['password']),
+            'no_telepon'  => $validated['no_telepon'],
+            'status_akun' => 'AKTIF',
         ]);
 
         Auth::guard('pembeli')->login($pembeli);
 
-        return redirect('/')->with('success', 'Registrasi berhasil, selamat datang!');
+        return redirect('/')
+            ->with('success', 'Registrasi berhasil, selamat datang!');
     }
 
     public function logout(Request $request)
     {
         Auth::guard('pembeli')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect('/login');
     }
+
 
     // ================= STAF: Admin/Owner/Kurir (guard: web) =================
 
@@ -79,23 +98,40 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
-        if (Auth::guard('web')->attempt($credentials)) {
+        // Status AKTIF menjadi syarat login.
+        // Akun NONAKTIF tidak akan dibuatkan sesi.
+        if (Auth::guard('web')->attempt($credentials + ['status_akun' => 'AKTIF'])) {
             $request->session()->regenerate();
-
-            if (Auth::guard('web')->user()->status_akun === 'NONAKTIF') {
-                Auth::guard('web')->logout();
-                return back()->withErrors(['email' => 'Akun Anda telah dinonaktifkan']);
-            }
 
             return redirect()->intended('/');
         }
 
-        return back()->withErrors(['email' => 'Email atau password salah']);
+        // Beritahu "dinonaktifkan" hanya kalau password benar.
+        $akun = User::where('email', $credentials['email'])->first();
+
+        if (
+            $akun &&
+            $akun->status_akun === 'NONAKTIF' &&
+            Hash::check($credentials['password'], $akun->password)
+        ) {
+            return back()
+                ->withErrors([
+                    'email' => 'Akun Anda telah dinonaktifkan'
+                ])
+                ->onlyInput('email');
+        }
+
+        return back()
+            ->withErrors([
+                'email' => 'Email atau password salah'
+            ])
+            ->onlyInput('email');
     }
 
     public function logoutStaff(Request $request)
     {
         Auth::guard('web')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
