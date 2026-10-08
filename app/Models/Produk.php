@@ -46,4 +46,19 @@ class Produk extends Model
             'id_produk'
         );
     }
+
+    // Sesuaikan status dengan stok.
+    // Produk NONAKTIF tidak disentuh (itu keputusan admin).
+    public function sesuaikanStatus(): void
+    {
+        if ($this->status_produk === 'NONAKTIF') {
+            return;
+        }
+
+        $this->status_produk = $this->stok > 0
+            ? 'TERSEDIA'
+            : 'STOK_HABIS';
+
+        $this->save();
+    }
 }

@@ -42,19 +42,36 @@ class PesananController extends Controller
         try {
             $pesanan = DB::transaction(function () use ($validated) {
 
+                // Gabungkan produk yang sama terlebih dahulu.
+                // Contoh:
+                // Produk A jumlah 2 + Produk A jumlah 3
+                // menjadi Produk A jumlah 5.
+                $gabungan = collect($validated['items'])
+                    ->groupBy('id_produk')
+                    ->map(fn ($baris, $id) => [
+                        'id_produk' => (int) $id,
+                        'jumlah'    => $baris->sum('jumlah'),
+                    ])
+                    ->values();
+
                 $totalHarga = 0;
                 $items = [];
 
-                foreach ($validated['items'] as $item) {
+                foreach ($gabungan as $item) {
 
-                    // S2-06: lockForUpdate() mengunci baris produk
-                    // sampai transaksi selesai untuk mencegah overselling.
-                    $produk = Produk::where('id_produk', $item['id_produk'])
+                    // Lock produk sampai transaksi selesai
+                    // untuk mencegah overselling.
+                    $produk = Produk::where(
+                        'id_produk',
+                        $item['id_produk']
+                    )
                         ->lockForUpdate()
                         ->first();
 
                     if (!$produk) {
-                        throw new \Exception("Produk tidak ditemukan");
+                        throw new \Exception(
+                            "Produk tidak ditemukan"
+                        );
                     }
 
                     if ($produk->status_produk !== 'TERSEDIA') {
@@ -70,6 +87,7 @@ class PesananController extends Controller
                     }
 
                     $subtotal = $produk->harga * $item['jumlah'];
+
                     $totalHarga += $subtotal;
 
                     $items[] = [
@@ -79,8 +97,7 @@ class PesananController extends Controller
                     ];
                 }
 
-                // Membuat kode pesanan yang aman dari bentrok
-                // antar transaksi pada tanggal yang sama.
+                // Membuat kode pesanan
                 $prefix = 'KM-' . now()->format('Ymd') . '-';
 
                 $nomorTerakhir = Pesanan::where(
@@ -102,6 +119,7 @@ class PesananController extends Controller
                     STR_PAD_LEFT
                 );
 
+                // Buat pesanan utama
                 $pesananBaru = Pesanan::create([
                     'kode_pesanan'      => $kodePesanan,
                     'id_pembeli'        => Auth::guard('pembeli')->id(),
@@ -112,6 +130,7 @@ class PesananController extends Controller
                     'total_harga'       => $totalHarga,
                 ]);
 
+                // Buat detail pesanan dan kurangi stok
                 foreach ($items as $item) {
 
                     DetailPesanan::create([
@@ -121,8 +140,20 @@ class PesananController extends Controller
                         'subtotal'   => $item['subtotal'],
                     ]);
 
-                    Produk::where('id_produk', $item['id_produk'])
-                        ->decrement('stok', $item['jumlah']);
+                    Produk::where(
+                        'id_produk',
+                        $item['id_produk']
+                    )->decrement(
+                        'stok',
+                        $item['jumlah']
+                    );
+
+                    // Sesuaikan status produk setelah stok berkurang
+                    $produk = Produk::find($item['id_produk']);
+
+                    if ($produk) {
+                        $produk->sesuaikanStatus();
+                    }
                 }
 
                 return $pesananBaru;
@@ -182,7 +213,8 @@ class PesananController extends Controller
         try {
             DB::transaction(function () use ($id, $validated, $alur) {
 
-                // Kunci baris pesanan supaya tidak diubah dua admin bersamaan
+                // Kunci pesanan supaya tidak diubah
+                // oleh dua admin secara bersamaan.
                 $pesanan = Pesanan::with('detailPesanan')
                     ->lockForUpdate()
                     ->findOrFail($id);
@@ -207,15 +239,27 @@ class PesananController extends Controller
                         );
                     }
 
-                    // Kembalikan stok yang sebelumnya dikurangi
-                    // saat pesanan dibuat
+                    // Kembalikan stok
                     foreach ($pesanan->detailPesanan as $detail) {
-                        Produk::where('id_produk', $detail->id_produk)
-                            ->increment('stok', $detail->jumlah);
+
+                        Produk::where(
+                            'id_produk',
+                            $detail->id_produk
+                        )->increment(
+                            'stok',
+                            $detail->jumlah
+                        );
+
+                        // Sesuaikan kembali status produk
+                        $produk = Produk::find($detail->id_produk);
+
+                        if ($produk) {
+                            $produk->sesuaikanStatus();
+                        }
                     }
                 }
 
-                // Simpan status baru
+                // Simpan status pesanan
                 $pesanan->update([
                     'status_pesanan' => $baru
                 ]);

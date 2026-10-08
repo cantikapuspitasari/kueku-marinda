@@ -12,6 +12,7 @@ class ProdukController extends Controller
     public function index()
     {
         $produk = Produk::with('kategori')->get();
+
         return view('produk.index', compact('produk'));
     }
 
@@ -19,6 +20,7 @@ class ProdukController extends Controller
     public function create()
     {
         $kategori = Kategori::all();
+
         return view('produk.create', compact('kategori'));
     }
 
@@ -34,15 +36,29 @@ class ProdukController extends Controller
             'status_produk' => 'required|in:TERSEDIA,STOK_HABIS,NONAKTIF',
         ]);
 
+        // Jika stok 0, produk tidak boleh berstatus TERSEDIA
+        if (
+            $validated['status_produk'] === 'TERSEDIA' &&
+            (int) $validated['stok'] === 0
+        ) {
+            $validated['status_produk'] = 'STOK_HABIS';
+        }
+
         Produk::create($validated);
 
-        return redirect()->route('produk.index')->with('success', 'Produk berhasil ditambahkan');
+        return redirect()
+            ->route('produk.index')
+            ->with(
+                'success',
+                'Produk berhasil ditambahkan'
+            );
     }
 
     // Detail 1 produk
     public function show($id)
     {
         $produk = Produk::with('kategori')->findOrFail($id);
+
         return view('produk.show', compact('produk'));
     }
 
@@ -51,6 +67,7 @@ class ProdukController extends Controller
     {
         $produk = Produk::findOrFail($id);
         $kategori = Kategori::all();
+
         return view('produk.edit', compact('produk', 'kategori'));
     }
 
@@ -68,17 +85,56 @@ class ProdukController extends Controller
             'status_produk' => 'required|in:TERSEDIA,STOK_HABIS,NONAKTIF',
         ]);
 
+        // Jika stok 0, produk tidak boleh berstatus TERSEDIA
+        if (
+            $validated['status_produk'] === 'TERSEDIA' &&
+            (int) $validated['stok'] === 0
+        ) {
+            $validated['status_produk'] = 'STOK_HABIS';
+        }
+
         $produk->update($validated);
 
-        return redirect()->route('produk.index')->with('success', 'Produk berhasil diperbarui');
+        return redirect()
+            ->route('produk.index')
+            ->with(
+                'success',
+                'Produk berhasil diperbarui'
+            );
     }
 
     // Hapus produk
+    // Produk yang pernah dipesan tidak benar-benar dihapus
+    // supaya riwayat pesanan dan laporan tetap aman.
     public function destroy($id)
     {
         $produk = Produk::findOrFail($id);
+
+        // Jika produk pernah masuk pesanan,
+        // cukup dinonaktifkan.
+        if ($produk->detailPesanan()->exists()) {
+
+            $produk->update([
+                'status_produk' => 'NONAKTIF'
+            ]);
+
+            return redirect()
+                ->route('produk.index')
+                ->with(
+                    'success',
+                    'Produk sudah pernah dipesan, jadi dinonaktifkan (tidak dihapus).'
+                );
+        }
+
+        // Jika belum pernah dipesan,
+        // produk boleh dihapus.
         $produk->delete();
 
-        return redirect()->route('produk.index')->with('success', 'Produk berhasil dihapus');
+        return redirect()
+            ->route('produk.index')
+            ->with(
+                'success',
+                'Produk berhasil dihapus'
+            );
     }
 }
