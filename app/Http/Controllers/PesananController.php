@@ -29,6 +29,7 @@ class PesananController extends Controller
     public function create()
     {
         $produk = Produk::where('status_produk', 'TERSEDIA')->get();
+
         return view('pesanan.create', compact('produk'));
     }
 
@@ -45,9 +46,9 @@ class PesananController extends Controller
                 $items = [];
 
                 foreach ($validated['items'] as $item) {
-                    // S2-06: lockForUpdate() mengunci baris produk ini sampai transaksi selesai.
-                    // Pembeli lain yang coba pesan produk yang sama HARUS menunggu giliran,
-                    // sehingga stok tidak pernah dibaca dua kali sebelum sempat dikurangi (anti-oversell).
+
+                    // S2-06: lockForUpdate() mengunci baris produk
+                    // sampai transaksi selesai untuk mencegah overselling.
                     $produk = Produk::where('id_produk', $item['id_produk'])
                         ->lockForUpdate()
                         ->first();
@@ -55,11 +56,17 @@ class PesananController extends Controller
                     if (!$produk) {
                         throw new \Exception("Produk tidak ditemukan");
                     }
+
                     if ($produk->status_produk !== 'TERSEDIA') {
-                        throw new \Exception("Produk {$produk->nama_produk} sedang tidak tersedia");
+                        throw new \Exception(
+                            "Produk {$produk->nama_produk} sedang tidak tersedia"
+                        );
                     }
+
                     if ($produk->stok < $item['jumlah']) {
-                        throw new \Exception("Stok {$produk->nama_produk} tidak cukup (tersisa {$produk->stok})");
+                        throw new \Exception(
+                            "Stok {$produk->nama_produk} tidak cukup (tersisa {$produk->stok})"
+                        );
                     }
 
                     $subtotal = $produk->harga * $item['jumlah'];
@@ -72,7 +79,28 @@ class PesananController extends Controller
                     ];
                 }
 
-                $kodePesanan = 'KM-' . now()->format('Ymd') . '-' . str_pad(Pesanan::count() + 1, 3, '0', STR_PAD_LEFT);
+                // Membuat kode pesanan yang aman dari bentrok
+                // antar transaksi pada tanggal yang sama.
+                $prefix = 'KM-' . now()->format('Ymd') . '-';
+
+                $nomorTerakhir = Pesanan::where(
+                    'kode_pesanan',
+                    'like',
+                    $prefix . '%'
+                )
+                    ->lockForUpdate()
+                    ->max(
+                        DB::raw(
+                            "CAST(SUBSTRING_INDEX(kode_pesanan, '-', -1) AS UNSIGNED)"
+                        )
+                    );
+
+                $kodePesanan = $prefix . str_pad(
+                    ($nomorTerakhir ?? 0) + 1,
+                    3,
+                    '0',
+                    STR_PAD_LEFT
+                );
 
                 $pesananBaru = Pesanan::create([
                     'kode_pesanan'      => $kodePesanan,
@@ -85,6 +113,7 @@ class PesananController extends Controller
                 ]);
 
                 foreach ($items as $item) {
+
                     DetailPesanan::create([
                         'id_pesanan' => $pesananBaru->id_pesanan,
                         'id_produk'  => $item['id_produk'],
@@ -92,24 +121,43 @@ class PesananController extends Controller
                         'subtotal'   => $item['subtotal'],
                     ]);
 
-                    Produk::where('id_produk', $item['id_produk'])->decrement('stok', $item['jumlah']);
+                    Produk::where('id_produk', $item['id_produk'])
+                        ->decrement('stok', $item['jumlah']);
                 }
 
                 return $pesananBaru;
             });
 
-            return redirect()->route('pesanan.show', $pesanan->id_pesanan)
-                ->with('success', 'Pesanan berhasil dibuat dengan kode ' . $pesanan->kode_pesanan);
+            return redirect()
+                ->route('pesanan.show', $pesanan->id_pesanan)
+                ->with(
+                    'success',
+                    'Pesanan berhasil dibuat dengan kode ' .
+                    $pesanan->kode_pesanan
+                );
 
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
         }
     }
 
     // Detail 1 pesanan
+    // Hanya pembeli yang memiliki pesanan tersebut yang dapat melihatnya
     public function show($id)
     {
-        $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli', 'alamat', 'pembayaran', 'pengiriman'])
+        $pembeli = Auth::guard('pembeli')->user();
+
+        $pesanan = Pesanan::with([
+            'detailPesanan.produk',
+            'pembeli',
+            'alamat',
+            'pembayaran',
+            'pengiriman'
+        ])
+            ->where('id_pembeli', $pembeli->id_pembeli)
             ->findOrFail($id);
 
         return view('pesanan.show', compact('pesanan'));
@@ -122,15 +170,78 @@ class PesananController extends Controller
             'status_pesanan' => 'required|in:PENDING,DIKONFIRMASI,DIPROSES,SELESAI,DIBATALKAN',
         ]);
 
-        $pesanan = Pesanan::findOrFail($id);
-        $pesanan->update($validated);
+        // Perubahan status yang diizinkan
+        $alur = [
+            'PENDING'      => ['DIKONFIRMASI', 'DIBATALKAN'],
+            'DIKONFIRMASI' => ['DIPROSES', 'DIBATALKAN'],
+            'DIPROSES'     => ['SELESAI', 'DIBATALKAN'],
+            'SELESAI'      => [],
+            'DIBATALKAN'   => [],
+        ];
 
-        return back()->with('success', 'Status pesanan berhasil diperbarui');
+        try {
+            DB::transaction(function () use ($id, $validated, $alur) {
+
+                // Kunci baris pesanan supaya tidak diubah dua admin bersamaan
+                $pesanan = Pesanan::with('detailPesanan')
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+
+                $lama = $pesanan->status_pesanan;
+                $baru = $validated['status_pesanan'];
+
+                // Cek apakah perubahan status diperbolehkan
+                if (!in_array($baru, $alur[$lama] ?? [])) {
+                    throw new \DomainException(
+                        "Status tidak bisa diubah dari {$lama} ke {$baru}"
+                    );
+                }
+
+                // Jika pesanan dibatalkan
+                if ($baru === 'DIBATALKAN') {
+
+                    // Pesanan yang sudah dibayar tidak boleh dibatalkan
+                    if ($pesanan->pembayaran()->exists()) {
+                        throw new \DomainException(
+                            'Pesanan yang sudah dibayar tidak bisa dibatalkan'
+                        );
+                    }
+
+                    // Kembalikan stok yang sebelumnya dikurangi
+                    // saat pesanan dibuat
+                    foreach ($pesanan->detailPesanan as $detail) {
+                        Produk::where('id_produk', $detail->id_produk)
+                            ->increment('stok', $detail->jumlah);
+                    }
+                }
+
+                // Simpan status baru
+                $pesanan->update([
+                    'status_pesanan' => $baru
+                ]);
+            });
+
+        } catch (\DomainException $e) {
+
+            return back()->with(
+                'error',
+                $e->getMessage()
+            );
+        }
+
+        return back()->with(
+            'success',
+            'Status pesanan berhasil diperbarui'
+        );
     }
-// Daftar SEMUA pesanan - khusus Admin & Owner
+
+    // Daftar SEMUA pesanan - khusus Admin & Owner
     public function indexStaff()
     {
-        $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli'])
+        $pesanan = Pesanan::with([
+            'detailPesanan.produk',
+            'pembeli'
+        ])
             ->orderBy('tanggal_pesan', 'desc')
             ->get();
 

@@ -22,7 +22,9 @@ class PembayaranController extends Controller
 
         // Cegah pesanan yang sama dibayar dua kali (relasi 1-ke-1)
         if ($pesanan->pembayaran()->exists()) {
-            return back()->withErrors(['pesanan' => 'Pesanan ini sudah tercatat pembayarannya']);
+            return back()->withErrors([
+                'pesanan' => 'Pesanan ini sudah tercatat pembayarannya'
+            ]);
         }
 
         $idStaf = Auth::guard('web')->id();
@@ -36,20 +38,35 @@ class PembayaranController extends Controller
             ]);
 
             // Kalau dibayar di toko (pickup), pesanan langsung selesai.
-            // Kalau delivery, status pesanan diurus lewat PengirimanController (nunggu terkirim)
+            // Kalau delivery, status pesanan diurus lewat PengirimanController
+            // (nunggu terkirim)
             if ($validated['tempat_pembayaran'] === 'TOKO') {
-                $pesanan->update(['status_pesanan' => 'SELESAI']);
+                $pesanan->update([
+                    'status_pesanan' => 'SELESAI'
+                ]);
             }
         });
 
-        return back()->with('success', 'Pembayaran berhasil dicatat');
+        return back()->with(
+            'success',
+            'Pembayaran berhasil dicatat'
+        );
     }
 
     // Detail pembayaran 1 pesanan
+    // Hanya pembeli yang memiliki pesanan tersebut yang dapat melihatnya
     public function show($idPesanan)
     {
-        $pembayaran = Pembayaran::with(['pesanan', 'penerima'])
+        $idPembeli = Auth::guard('pembeli')->id();
+
+        $pembayaran = Pembayaran::with([
+            'pesanan',
+            'penerima'
+        ])
             ->where('id_pesanan', $idPesanan)
+            ->whereHas('pesanan', function ($q) use ($idPembeli) {
+                $q->where('id_pembeli', $idPembeli);
+            })
             ->firstOrFail();
 
         return view('pembayaran.show', compact('pembayaran'));

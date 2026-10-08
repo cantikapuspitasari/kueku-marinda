@@ -33,10 +33,14 @@ Route::post('staff/logout', [AuthController::class, 'logoutStaff'])->name('staff
 
 // ---------- Produk & Kategori: boleh dilihat siapa saja (termasuk belum login) ----------
 Route::get('produk', [ProdukController::class, 'index'])->name('produk.index');
-Route::get('produk/{produk}', [ProdukController::class, 'show'])->name('produk.show');
-Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
-Route::get('kategori/{kategori}', [KategoriController::class, 'show'])->name('kategori.show');
+Route::get('produk/{produk}', [ProdukController::class, 'show'])
+    ->whereNumber('produk')
+    ->name('produk.show');
 
+Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
+Route::get('kategori/{kategori}', [KategoriController::class, 'show'])
+    ->whereNumber('kategori')
+    ->name('kategori.show');
 Route::middleware('auth:pembeli')->group(function () {
     Route::resource('pesanan', PesananController::class)->except(['edit', 'update', 'destroy']);
     Route::get('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'show'])->name('pembayaran.show');

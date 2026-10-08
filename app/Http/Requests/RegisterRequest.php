@@ -15,7 +15,7 @@ class RegisterRequest extends FormRequest
     {
         return [
             'nama'                  => 'required|string|min:3|max:100',
-            'email'                 => 'required|email|max:120|unique:users,email',
+            'email'                 => 'required|email|max:120|unique:pembeli,email',
             'password'              => 'required|min:6|confirmed',
             'no_telepon'            => 'required|string|regex:/^[0-9+\-\s]{10,20}$/',
         ];
