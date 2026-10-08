@@ -10,26 +10,38 @@ class LaporanController extends Controller
     // Laporan penjualan per periode (bulan & tahun)
     public function index(Request $request)
     {
-        // Default: bulan & tahun saat ini kalau tidak dipilih
-        $bulan = $request->input('bulan', now()->month);
-        $tahun = $request->input('tahun', now()->year);
+        // Validasi filter bulan dan tahun
+        $request->validate([
+            'bulan' => 'nullable|integer|between:1,12',
+            'tahun' => 'nullable|integer|between:2020,2100',
+        ]);
 
-        $pesananSelesai = Pesanan::with(['detailPesanan.produk', 'pembeli'])
+        // Default: bulan & tahun saat ini kalau tidak dipilih
+        $bulan = (int) $request->input('bulan', now()->month);
+        $tahun = (int) $request->input('tahun', now()->year);
+
+        $pesananSelesai = Pesanan::with([
+            'detailPesanan.produk',
+            'pembeli'
+        ])
             ->where('status_pesanan', 'SELESAI')
             ->whereMonth('tanggal_pesan', $bulan)
             ->whereYear('tanggal_pesan', $tahun)
             ->get();
 
         $totalPesanan = $pesananSelesai->count();
+
         $totalPemasukan = $pesananSelesai->sum('total_harga');
 
-        // Breakdown tambahan: produk apa yang paling laku di periode ini
+        // Breakdown tambahan:
+        // produk apa yang paling laku di periode ini
         $produkTerlaris = $pesananSelesai
             ->flatMap(fn ($pesanan) => $pesanan->detailPesanan)
             ->groupBy('id_produk')
             ->map(function ($items) {
                 return [
-                    'nama_produk' => $items->first()->produk->nama_produk,
+                    'nama_produk' => $items->first()->produk?->nama_produk
+                        ?? '(produk tidak ditemukan)',
                     'total_terjual' => $items->sum('jumlah'),
                 ];
             })

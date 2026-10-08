@@ -43,9 +43,6 @@ class PesananController extends Controller
             $pesanan = DB::transaction(function () use ($validated) {
 
                 // Gabungkan produk yang sama terlebih dahulu.
-                // Contoh:
-                // Produk A jumlah 2 + Produk A jumlah 3
-                // menjadi Produk A jumlah 5.
                 $gabungan = collect($validated['items'])
                     ->groupBy('id_produk')
                     ->map(fn ($baris, $id) => [
@@ -226,6 +223,17 @@ class PesananController extends Controller
                 if (!in_array($baru, $alur[$lama] ?? [])) {
                     throw new \DomainException(
                         "Status tidak bisa diubah dari {$lama} ke {$baru}"
+                    );
+                }
+
+                // Pesanan harus sudah memiliki pembayaran
+                // sebelum dapat diselesaikan.
+                if (
+                    $baru === 'SELESAI' &&
+                    !$pesanan->pembayaran()->exists()
+                ) {
+                    throw new \DomainException(
+                        'Catat pembayaran dulu sebelum menyelesaikan pesanan'
                     );
                 }
 
