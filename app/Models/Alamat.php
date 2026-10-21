@@ -13,22 +13,10 @@ class Alamat extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_user',
+        'id_pembeli',
         'label_alamat',
         'alamat_lengkap',
         'kota',
         'kode_pos',
     ];
-
-    // Alamat milik satu user
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'id_user', 'id_user');
-    }
-
-    // Alamat dapat digunakan pada banyak pesanan
-    public function pesanan()
-    {
-        return $this->hasMany(Pesanan::class, 'id_alamat', 'id_alamat');
-    }
 }

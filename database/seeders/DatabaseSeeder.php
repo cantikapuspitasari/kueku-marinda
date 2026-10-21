@@ -3,23 +3,26 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Salin semua pelanggan dari tabel "pembeli" ke tabel "users"
+        // supaya bisa login. Aman dijalankan berulang (tidak membuat data dobel).
+        foreach (DB::table('pembeli')->get() as $p) {
+            User::updateOrCreate(
+                ['email' => $p->email],
+                [
+                    'nama'        => $p->nama,
+                    'password'    => $p->password,   // hash lama dipakai apa adanya
+                    'no_telepon'  => $p->no_telepon,
+                    'role'        => 'PEMBELI',
+                    'status_akun' => 'AKTIF',
+                ]
+            );
+        }
     }
 }

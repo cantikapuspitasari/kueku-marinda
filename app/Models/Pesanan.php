@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Pembeli;
+use App\Models\User;
 
 class Pesanan extends Model
 {
@@ -14,7 +16,7 @@ class Pesanan extends Model
 
     protected $fillable = [
         'kode_pesanan',
-        'id_user',
+        'id_pembeli',
         'id_alamat',
         'tanggal_pesan',
         'tanggal_ambil',
@@ -29,7 +31,7 @@ class Pesanan extends Model
         'total_harga' => 'decimal:2',
     ];
 
-    // Pesanan dibuat oleh satu user/pembeli
+    // Relasi ke user
     public function user()
     {
         return $this->belongsTo(
@@ -39,7 +41,17 @@ class Pesanan extends Model
         );
     }
 
-    // Pesanan menggunakan satu alamat
+    // Relasi ke pembeli
+    public function pembeli()
+    {
+        return $this->belongsTo(
+            Pembeli::class,
+            'id_pembeli',
+            'id_pembeli'
+        );
+    }
+
+    // Relasi alamat
     public function alamat()
     {
         return $this->belongsTo(
@@ -49,7 +61,7 @@ class Pesanan extends Model
         );
     }
 
-    // Satu pesanan memiliki banyak detail produk
+    // Relasi detail pesanan
     public function detailPesanan()
     {
         return $this->hasMany(
@@ -59,7 +71,7 @@ class Pesanan extends Model
         );
     }
 
-    // Satu pesanan memiliki satu pembayaran
+    // Relasi pembayaran
     public function pembayaran()
     {
         return $this->hasOne(
@@ -69,7 +81,7 @@ class Pesanan extends Model
         );
     }
 
-    // Satu pesanan memiliki satu pengiriman
+    // Relasi pengiriman
     public function pengiriman()
     {
         return $this->hasOne(

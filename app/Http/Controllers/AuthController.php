@@ -32,7 +32,19 @@ class AuthController extends Controller
                 return back()->withErrors(['email' => 'Akun Anda telah dinonaktifkan']);
             }
 
-            return redirect()->intended('/');
+            $role = Auth::user()->role;
+
+            if ($role === 'ADMIN') {
+                return redirect()->route('admin.dashboard');
+            }
+            if ($role === 'KURIR') {
+                return redirect('/pengiriman');
+            }
+            if ($role === 'OWNER') {
+                return redirect()->route('owner.dashboard');
+            }
+
+            return redirect()->intended('/produk');
         }
 
         return back()->withErrors(['email' => 'Email atau password salah']);
@@ -55,12 +67,12 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'nama'       => $validated['nama'],
-            'email'      => $validated['email'],
-            'password'   => Hash::make($validated['password']),
-            'no_telepon' => $validated['no_telepon'],
-            'role'       => 'PEMBELI',
-            'status_akun'=> 'AKTIF',
+            'nama'        => $validated['nama'],
+            'email'       => $validated['email'],
+            'password'    => Hash::make($validated['password']),
+            'no_telepon'  => $validated['no_telepon'],
+            'role'        => 'PEMBELI',
+            'status_akun' => 'AKTIF',
         ]);
 
         Auth::login($user);

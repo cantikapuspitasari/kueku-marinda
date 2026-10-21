@@ -8,10 +8,33 @@ use Illuminate\Http\Request;
 
 class ProdukController extends Controller
 {
-    // Menampilkan semua produk (untuk katalog pembeli / list admin)
+    // Data katalog untuk JavaScript (keranjang, checkout, detail pesanan).
+    // Kunci = id_produk, jadi semua halaman memakai data yang sama dari database.
+    public static function katalogJs(): array
+    {
+        return Produk::with('kategori')->get()->mapWithKeys(function ($p) {
+            $kat = $p->kategori->nama_kategori ?? $p->kategori->nama ?? 'Produk';
+
+            return [$p->id_produk => [
+                'name'  => $p->nama_produk,
+                'price' => (int) $p->harga,
+                'sub'   => $kat . ' • Fresh Baked',
+                'img'   => $p->foto_produk ? asset('images/produk/' . $p->foto_produk) : '',
+                'stok'  => (int) $p->stok,
+                'aktif' => $p->status_produk === 'TERSEDIA',
+            ]];
+        })->all();
+    }
+
+    // Menampilkan semua produk (beranda pelanggan)
     public function index()
     {
-        $produk = Produk::with('kategori')->get();
+        $produk = Produk::with('kategori')
+            ->where('status_produk', '!=', 'NONAKTIF')
+            ->orderBy('id_kategori')
+            ->orderBy('id_produk')
+            ->get();
+
         return view('produk.index', compact('produk'));
     }
 
@@ -32,6 +55,7 @@ class ProdukController extends Controller
             'harga'         => 'required|numeric|min:0',
             'stok'          => 'required|integer|min:0',
             'status_produk' => 'required|in:TERSEDIA,STOK_HABIS,NONAKTIF',
+            'foto_produk'   => 'nullable|string|max:255',
         ]);
 
         Produk::create($validated);
@@ -66,6 +90,7 @@ class ProdukController extends Controller
             'harga'         => 'required|numeric|min:0',
             'stok'          => 'required|integer|min:0',
             'status_produk' => 'required|in:TERSEDIA,STOK_HABIS,NONAKTIF',
+            'foto_produk'   => 'nullable|string|max:255',
         ]);
 
         $produk->update($validated);
