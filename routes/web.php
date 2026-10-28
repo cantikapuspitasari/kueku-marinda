@@ -20,6 +20,7 @@ use App\Http\Controllers\OwnerDashboardController;
 use App\Http\Controllers\OwnerMonitoringController;
 use App\Http\Controllers\OwnerLaporanController;
 use App\Http\Controllers\OwnerAkunController;
+use App\Http\Controllers\StrukController;
 
 // ---------- Halaman utama ----------
 Route::get('/', function () {
@@ -64,6 +65,7 @@ Route::get('pesanan/detail', [PesananController::class, 'detail'])->name('pesana
 Route::middleware('auth')->group(function () {
     Route::resource('pesanan', PesananController::class)->except(['edit', 'update', 'destroy']);
     Route::get('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'show'])->name('pembayaran.show');
+    Route::get('pesanan/{idPesanan}/struk', [StrukController::class, 'show'])->name('pesanan.struk');
 });
 
 // ---------- Khusus Admin: kelola produk & kategori, verifikasi pesanan ----------

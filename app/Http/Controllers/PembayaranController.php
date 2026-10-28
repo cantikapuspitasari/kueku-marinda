@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pembayaran;
+use App\Models\Pengiriman;
 use App\Models\Pesanan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PembayaranController extends Controller
@@ -13,22 +15,30 @@ class PembayaranController extends Controller
     // Dipanggil oleh Admin (saat pickup) atau Kurir (saat delivery)
     public function store(Request $request, $idPesanan)
     {
+        // Penerima pembayaran (staff di struk) diisi OTOMATIS oleh sistem, bukan diketik admin.
         $validated = $request->validate([
-            'id_penerima'       => 'required|exists:users,id_user',
             'tempat_pembayaran' => 'required|in:TOKO,ALAMAT_PEMBELI',
         ]);
 
         $pesanan = Pesanan::findOrFail($idPesanan);
+
+        // Ambil di toko -> staff yang sedang login (admin) yang menerima bayar.
+        // Diantar kurir  -> kurir yang menangani pengiriman; kalau belum ada kurir, staff yang sedang login.
+        $idPenerima = null;
+        if ($pesanan->jenis_pengambilan === 'DELIVERY') {
+            $idPenerima = Pengiriman::where('id_pesanan', $pesanan->id_pesanan)->value('id_kurir');
+        }
+        $idPenerima = $idPenerima ?: Auth::id();
 
         // Cegah pesanan yang sama dibayar dua kali (relasi 1-ke-1)
         if ($pesanan->pembayaran()->exists()) {
             return back()->withErrors(['pesanan' => 'Pesanan ini sudah tercatat pembayarannya']);
         }
 
-        DB::transaction(function () use ($pesanan, $validated) {
+        DB::transaction(function () use ($pesanan, $validated, $idPenerima) {
             Pembayaran::create([
                 'id_pesanan'        => $pesanan->id_pesanan,
-                'id_penerima'       => $validated['id_penerima'],
+                'id_penerima'       => $idPenerima,
                 'jumlah_bayar'      => $pesanan->total_harga,
                 'tempat_pembayaran' => $validated['tempat_pembayaran'],
             ]);
