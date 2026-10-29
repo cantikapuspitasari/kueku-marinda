@@ -1,0 +1,5 @@
+// Tempel di routes/web.php, di dekat route login/register (di luar grup auth/role):
+use App\Http\Controllers\GoogleController;
+
+Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
+Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');

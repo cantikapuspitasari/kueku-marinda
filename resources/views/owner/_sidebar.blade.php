@@ -36,13 +36,13 @@
     </nav>
   </div>
   <div class="p-4 border-t border-white/10 bg-black/10">
-    <div class="flex items-center gap-3 p-3 rounded-xl bg-white/10 border border-white/20 mb-3">
+    <a href="{{ route('akun.saya') }}" title="Akun Saya" class="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 mb-3 transition">
       <div class="w-9 h-9 rounded-full bg-white text-maroon flex items-center justify-center font-bold text-xs shadow-sm">{{ strtoupper(mb_substr($ownerNama, 0, 2)) }}</div>
       <div class="min-w-0">
         <p class="text-xs font-semibold text-white truncate">{{ $ownerNama }}</p>
         <p class="text-[11px] text-rose-200/80">Pemilik Usaha</p>
       </div>
-    </div>
+    </a>
     <form method="POST" action="{{ route('logout') }}">
       @csrf
       <button type="submit" class="flex items-center justify-center gap-2 w-full px-4 py-2 text-xs font-medium text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 rounded-lg transition">

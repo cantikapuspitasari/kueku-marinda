@@ -135,6 +135,7 @@
 <!-- Form Elements -->
 <form class="space-y-5" data-purpose="credentials-form" method="POST" action="{{ url('/login') }}">
 @csrf
+<input type="hidden" name="portal" value="pelanggan">
 @if ($errors->any())
 <div class="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm font-medium text-red-700">{{ $errors->first() }}</div>
 @endif
@@ -198,7 +199,7 @@
 </div>
 <!-- Social Login Button: Google -->
 <div class="mt-6" data-purpose="social-login">
-<button class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-stone-200 rounded-xl bg-white text-stone-700 text-sm font-semibold hover:bg-stone-50 hover:border-stone-300 active:bg-stone-100 transition duration-150 shadow-sm" type="button">
+<a href="{{ route('google.redirect') }}" class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-stone-200 rounded-xl bg-white text-stone-700 text-sm font-semibold hover:bg-stone-50 hover:border-stone-300 active:bg-stone-100 transition duration-150 shadow-sm">
 <!-- Google Official Logo SVG -->
 <svg class="w-5 h-5" viewBox="0 0 24 24">
 <path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" fill="#4285F4"></path>
@@ -207,7 +208,7 @@
 <path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" fill="#EA4335"></path>
 </svg>
 <span class="">Google</span>
-</button>
+</a>
 </div>
 <!-- Registration Footer Link -->
 <p class="mt-8 text-center text-sm text-stone-600">

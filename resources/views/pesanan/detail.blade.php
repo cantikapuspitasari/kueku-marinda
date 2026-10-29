@@ -51,10 +51,10 @@
     <nav class="hidden lg:flex items-center gap-6 text-sm font-medium text-[#5C5552]">
       <a class="hover:text-[#993A3C] transition" href="{{ url('/produk') }}">Beranda</a>
       <a class="hover:text-[#993A3C] transition" href="{{ url('/keranjang') }}">keranjang</a>
-      <a class="hover:text-[#993A3C] transition" href="{{ url('/produk') }}#favorite">Favorite</a>
-      <a class="text-[#993A3C] font-semibold border-b-2 border-[#993A3C] pb-1" href="#">Pesanan</a>
+      <a class="hover:text-[#993A3C] transition" href="{{ route('favorit') }}">Favorite</a>
+      <a class="text-[#993A3C] font-semibold border-b-2 border-[#993A3C] pb-1" href="{{ route('pesanan.saya') }}">Pesanan</a>
     </nav>
-    <a class="flex items-center gap-2 px-4 py-2 bg-[#F6F3EE] border border-[#993A3C]/20 hover:border-[#993A3C]/40 rounded-full text-sm text-[#4A4543] transition-colors" href="#">
+    <a class="flex items-center gap-2 px-4 py-2 bg-[#F6F3EE] border border-[#993A3C]/20 hover:border-[#993A3C]/40 rounded-full text-sm text-[#4A4543] transition-colors" href="{{ route('profil') }}">
       <svg class="w-4 h-4 text-[#993A3C] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       <span class="whitespace-nowrap">Profil pelanggan</span>
     </a>
@@ -202,12 +202,18 @@ const rp = n => "Rp " + n.toLocaleString("id-ID");
 
 /* Pesanan terakhir (disimpan oleh halaman checkout) */
 let order = null;
-try { order = JSON.parse(localStorage.getItem("kueku_last_order")); } catch (e) {}
-const mode = order && order.mode === "toko" ? "toko" : "kurir";
+const KODE_URL = new URLSearchParams(location.search).get("kode");
+if (KODE_URL) {
+  order = { no: "#" + KODE_URL, cart: {} };            // pesanan yang dipilih dari "Pesanan Saya"
+} else {
+  try { order = JSON.parse(localStorage.getItem("kueku_last_order")); } catch (e) {}
+}
+let mode = order && order.mode === "toko" ? "toko" : "kurir";
 
 /* Tahap status saat ini: 0 = Pesanan di konfirmasi.
    Nanti bisa diisi dari database (status_pesanan) supaya timeline ikut berubah. */
-const CURRENT = 0;
+let CURRENT = -1;
+let STATE = "menunggu"; // menunggu | ok | batal
 
 const STEPS = {
   kurir: [
@@ -254,8 +260,12 @@ function renderTimeline() {
     html += '<div class="relative flex gap-5 sm:gap-7 ' + (last ? "" : "pb-9 ") + 'group">' + line + circle +
       '<div class="pt-1 flex-1"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">' + title + '</div>' + desc + '</div></div>';
   });
+  if (STATE === "batal") {
+    html = '<div class="p-5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">Pesanan ini dibatalkan. Hubungi admin bila ada pertanyaan.</div>';
+  }
   document.getElementById("timeline").innerHTML = html;
-  document.getElementById("status-badge").textContent = steps[CURRENT].badge;
+  document.getElementById("status-badge").textContent =
+    STATE === "batal" ? "Dibatalkan" : (CURRENT < 0 ? "Menunggu Verifikasi Admin" : steps[CURRENT].badge);
   document.getElementById("status-title").textContent = mode === "toko" ? "Status Pengambilan" : "Status Pengantaran";
 }
 
@@ -306,6 +316,38 @@ function renderOrder() {
 
 renderTimeline();
 renderOrder();
+
+/* ---------- Status asli dari database (diperbarui otomatis tiap 8 detik) ---------- */
+function tampilkanKurir(k) {
+  const box = document.getElementById("courier-section");
+  if (!k) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  document.getElementById("courier-name").textContent = k.nama || "-";
+  document.getElementById("courier-vehicle").textContent = "Kurir Kueku Marinda";
+  const no = (k.no_telepon || "").replace(/\D/g, "").replace(/^0/, "62");
+  document.getElementById("courier-wa").href = no ? "https://wa.me/" + no : "#";
+}
+
+async function muatStatus() {
+  if (!order || !order.no) return;
+  const kode = String(order.no).replace("#", "");
+  try {
+    const res = await fetch("{{ url('/pesanan/lacak') }}/" + encodeURIComponent(kode), {
+      headers: { "Accept": "application/json" }, credentials: "same-origin"
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    mode = data.mode === "toko" ? "toko" : "kurir";
+    order = { no: "#" + data.kode, cart: data.cart || {}, mode: mode };
+    STATE = data.state;
+    CURRENT = data.tahap;
+    renderTimeline();
+    renderOrder();
+    tampilkanKurir(data.kurir);
+  } catch (e) { /* abaikan, coba lagi nanti */ }
+}
+muatStatus();
+setInterval(muatStatus, 8000);
 </script>
 </body>
 </html>

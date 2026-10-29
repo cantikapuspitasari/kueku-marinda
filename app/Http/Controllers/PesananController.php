@@ -8,6 +8,7 @@ use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Telepon;
 
 class PesananController extends Controller
 {
@@ -47,7 +48,7 @@ class PesananController extends Controller
         $validated = $request->validate([
             'id_alamat'          => 'nullable|exists:alamat,id_alamat',
             'alamat_lengkap'     => 'nullable|string|max:500',
-            'no_telepon'         => 'nullable|string|max:20',
+            'no_telepon'         => 'required|string|min:9|max:20',
             'tanggal_ambil'      => 'required|date|after_or_equal:today',
             'jenis_pengambilan'  => 'required|in:PICKUP,DELIVERY',
             'items'              => 'required|array|min:1',
@@ -55,6 +56,7 @@ class PesananController extends Controller
             'items.*.jumlah'     => 'required|integer|min:1',
         ]);
 
+        $validated['no_telepon'] = Telepon::normalisasi($validated['no_telepon']);
         $delivery = $validated['jenis_pengambilan'] === 'DELIVERY';
 
         // Kalau delivery, alamat wajib diisi (pilih alamat tersimpan atau ketik alamat baru)
@@ -76,6 +78,23 @@ class PesananController extends Controller
                 $user = Auth::user();
                 $totalHarga = 0;
                 $items = [];
+
+                // No. HP dari checkout disimpan ke akun & data pembeli (tampil di Profil dan dibaca kurir)
+                DB::table('users')->where('id_user', $user->id_user)
+                    ->update(['no_telepon' => $validated['no_telepon']]);
+
+                $idPembeli = DB::table('pembeli')->where('email', $user->email)->value('id_pembeli');
+                if ($idPembeli) {
+                    DB::table('pembeli')->where('id_pembeli', $idPembeli)
+                        ->update(['no_telepon' => $validated['no_telepon']]);
+                } else {
+                    $idPembeli = DB::table('pembeli')->insertGetId([
+                        'nama'       => $user->nama,
+                        'email'      => $user->email,
+                        'password'   => $user->password,
+                        'no_telepon' => $validated['no_telepon'],
+                    ]);
+                }
 
                 foreach ($gabung as $idProduk => $jumlah) {
                     // S2-06: lockForUpdate() mengunci baris produk ini sampai transaksi selesai.
@@ -115,16 +134,6 @@ class PesananController extends Controller
                 // (alamat.id_pembeli mengacu ke tabel pembeli, dicocokkan lewat email akun)
                 $idAlamat = $validated['id_alamat'] ?? null;
                 if ($delivery && !$idAlamat) {
-                    $idPembeli = DB::table('pembeli')->where('email', $user->email)->value('id_pembeli');
-                    if (!$idPembeli) {
-                        $idPembeli = DB::table('pembeli')->insertGetId([
-                            'nama'       => $user->nama,
-                            'email'      => $user->email,
-                            'password'   => $user->password,
-                            'no_telepon' => $validated['no_telepon'] ?? $user->no_telepon,
-                        ]);
-                    }
-
                     $idAlamat = DB::table('alamat')->insertGetId([
                         'id_pembeli'     => $idPembeli,
                         'label_alamat'   => 'Rumah',
@@ -140,9 +149,7 @@ class PesananController extends Controller
 
                 $pesananBaru = Pesanan::create([
                         'kode_pesanan'      => $kodePesanan,
-                        'id_pembeli'        => DB::table('pembeli')
-                                ->where('email', $user->email)
-                                ->value('id_pembeli'),
+                        'id_pembeli'        => $idPembeli,
                         'id_alamat'         => $idAlamat,
                         'tanggal_pesan'     => now(),
                         'tanggal_ambil'     => $validated['tanggal_ambil'],
@@ -225,17 +232,49 @@ class PesananController extends Controller
         return view('admin.pesanan', compact('pesanan'));
     }
 
-    // Update status pesanan (dipakai Admin)
+    // Update status pesanan (dipakai Admin): hanya perpindahan yang valid
     public function updateStatus(Request $request, $id)
     {
         $validated = $request->validate([
             'status_pesanan' => 'required|in:PENDING,DIKONFIRMASI,DIPROSES,SELESAI,DIBATALKAN',
         ]);
+        $baru = $validated['status_pesanan'];
 
-        $pesanan = Pesanan::findOrFail($id);
-        $pesanan->update($validated);
+        $alur = [
+            'PENDING'      => ['DIKONFIRMASI', 'DIBATALKAN'],
+            'DIKONFIRMASI' => ['DIPROSES', 'DIBATALKAN'],
+            'DIPROSES'     => ['SELESAI', 'DIBATALKAN'],
+            'SELESAI'      => [],
+            'DIBATALKAN'   => [],
+        ];
 
-        return back()->with('success', 'Status pesanan berhasil diperbarui');
+        try {
+            DB::transaction(function () use ($id, $baru, $alur) {
+                $p = DB::table('pesanan')->where('id_pesanan', $id)->lockForUpdate()->first();
+                if (!$p) {
+                    throw new \Exception('Pesanan tidak ditemukan.');
+                }
+                if (!in_array($baru, $alur[$p->status_pesanan] ?? [], true)) {
+                    throw new \Exception('Status tidak bisa diubah dari ' . $p->status_pesanan . ' ke ' . $baru . '.');
+                }
+                if ($baru === 'SELESAI' && !DB::table('pembayaran')->where('id_pesanan', $id)->exists()) {
+                    throw new \Exception('Catat pembayaran terlebih dahulu sebelum menyelesaikan pesanan.');
+                }
+
+                // Pesanan dibatalkan: kembalikan stok produk
+                if ($baru === 'DIBATALKAN') {
+                    foreach (DB::table('detail_pesanan')->where('id_pesanan', $id)->get() as $d) {
+                        DB::table('produk')->where('id_produk', $d->id_produk)->increment('stok', $d->jumlah);
+                    }
+                }
+
+                DB::table('pesanan')->where('id_pesanan', $id)->update(['status_pesanan' => $baru]);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Status pesanan berhasil diperbarui.');
     }
 
 }

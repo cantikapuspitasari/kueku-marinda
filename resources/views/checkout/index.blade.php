@@ -48,10 +48,10 @@
     <div class="hidden lg:flex items-center gap-7">
       <a class="text-stone-600 hover:text-[#993a3c] transition-colors" href="{{ url('/produk') }}">Beranda</a>
       <a class="text-[#993a3c] font-semibold border-b-2 border-[#993a3c] pb-0.5" href="{{ url('/keranjang') }}">Keranjang</a>
-      <a class="text-stone-600 hover:text-[#993a3c] transition-colors" href="{{ url('/produk') }}#favorite">Favorite</a>
-      <a class="text-stone-600 hover:text-[#993a3c] transition-colors" href="#">Pesanan</a>
+      <a class="text-stone-600 hover:text-[#993a3c] transition-colors" href="{{ route('favorit') }}">Favorite</a>
+      <a class="text-stone-600 hover:text-[#993a3c] transition-colors" href="{{ route('pesanan.saya') }}">Pesanan</a>
     </div>
-    <a href="#" class="inline-flex items-center gap-2 px-4 py-2 border border-stone-300 rounded-full text-stone-700 hover:border-[#993a3c] hover:text-[#993a3c] transition-all bg-white/60">
+    <a href="{{ route('profil') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-stone-300 rounded-full text-stone-700 hover:border-[#993a3c] hover:text-[#993a3c] transition-all bg-white/60">
       <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
       <span>Profil pelanggan</span>
     </a>
@@ -104,7 +104,7 @@
             </div>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-stone-500 font-medium text-sm">+62</span>
-              <input class="w-full pl-14 pr-4 py-3 bg-[#fcf9f4] border border-[#d8cdb8] rounded-xl text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#993a3c]/30 focus:border-[#993a3c] transition-all shadow-inner" id="phone" placeholder="812-3456-7890" type="tel">
+              <input class="w-full pl-14 pr-4 py-3 bg-[#fcf9f4] border border-[#d8cdb8] rounded-xl text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#993a3c]/30 focus:border-[#993a3c] transition-all shadow-inner" id="phone" placeholder="812-3456-7890" type="tel" value="{{ ltrim(preg_replace('/\D/', '', auth()->user()->no_telepon ?? ''), '0') }}">
             </div>
           </div>
 
@@ -352,10 +352,8 @@ document.getElementById("btn-next").addEventListener("click", () => {
   const time = document.getElementById("time").value;
 
   let msg = "";
-  if (mode === "kurir") {
-    if (address.length < 10) msg = "Alamat pengiriman wajib diisi dengan lengkap.";
-    else if (phone.length < 9) msg = "No. handphone / WhatsApp belum benar.";
-  }
+  if (mode === "kurir" && address.length < 10) msg = "Alamat pengiriman wajib diisi dengan lengkap.";
+  if (!msg && phone.length < 9) msg = "No. handphone / WhatsApp wajib diisi dengan benar.";
   if (!msg && !date) msg = "Tanggal belum dipilih.";
 
   if (msg) { err.textContent = msg; err.classList.remove("hidden"); return; }
@@ -388,7 +386,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
     body: JSON.stringify({
       jenis_pengambilan: mode === "kurir" ? "DELIVERY" : "PICKUP",
       alamat_lengkap: mode === "kurir" ? address : null,
-      no_telepon: phone || null,
+      no_telepon: phone,
       tanggal_ambil: date,
       items: items
     })

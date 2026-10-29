@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pesanan;
+use App\Support\TahapPesanan;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AdminPesananController extends Controller
@@ -21,6 +23,77 @@ class AdminPesananController extends Controller
             ->get()
             ->keyBy('id_alamat');
 
-        return view('admin.pesanan', compact('pesanan', 'alamat'));
+        // Data pengiriman + daftar kurir aktif (untuk tahap "Serahkan ke kurir")
+        $pengiriman = DB::table('pengiriman')
+            ->whereIn('id_pesanan', $pesanan->pluck('id_pesanan'))
+            ->get()
+            ->keyBy('id_pesanan');
+
+        $kurir = DB::table('users')
+            ->where('role', 'KURIR')
+            ->where('status_akun', 'AKTIF')
+            ->orderBy('nama')
+            ->get(['id_user', 'nama']);
+
+        return view('admin.pesanan', compact('pesanan', 'alamat', 'pengiriman', 'kurir'));
+    }
+
+    // Memajukan pesanan satu tahap (dapur -> kurir -> diantar -> sampai)
+    public function maju(Request $request, $id)
+    {
+        $p = DB::table('pesanan')->where('id_pesanan', $id)->first();
+        abort_if(!$p, 404);
+
+        $pg   = DB::table('pengiriman')->where('id_pesanan', $id)->first();
+        $next = TahapPesanan::berikutnya($p->status_pesanan, $p->jenis_pengambilan, $pg->status_pengiriman ?? null);
+
+        if (!$next) {
+            return back()->with('error', 'Pesanan ini tidak punya tahap berikutnya.');
+        }
+
+        $today = now()->toDateString();
+
+        DB::transaction(function () use ($request, $next, $id, $pg, $today) {
+            switch ($next['aksi']) {
+                case 'kemas':
+                    DB::table('pesanan')->where('id_pesanan', $id)->update(['status_pesanan' => 'DIPROSES']);
+                    break;
+
+                case 'serahkan':
+                    $data = $request->validate([
+                        'id_kurir' => 'required|exists:users,id_user',
+                    ], ['id_kurir.required' => 'Pilih kurir terlebih dahulu.']);
+
+                    $isiKurir = [
+                        'id_user'           => $data['id_kurir'],
+                        'status_pengiriman' => 'DIAMBIL_KURIR',
+                        'waktu_diambil'     => $today,
+                    ];
+                    if ($pg) {
+                        DB::table('pengiriman')->where('id_pesanan', $id)->update($isiKurir);
+                    } else {
+                        DB::table('pengiriman')->insert($isiKurir + ['id_pesanan' => $id]);
+                    }
+                    break;
+
+                case 'antar':
+                    DB::table('pengiriman')->where('id_pesanan', $id)->update(['status_pengiriman' => 'DIANTAR']);
+                    break;
+
+                case 'terkirim':
+                    DB::table('pengiriman')->where('id_pesanan', $id)->update([
+                        'status_pengiriman' => 'TERKIRIM',
+                        'waktu_terkirim'    => $today,
+                    ]);
+                    DB::table('pesanan')->where('id_pesanan', $id)->update(['status_pesanan' => 'SELESAI']);
+                    break;
+
+                case 'selesai_toko':
+                    DB::table('pesanan')->where('id_pesanan', $id)->update(['status_pesanan' => 'SELESAI']);
+                    break;
+            }
+        });
+
+        return back()->with('success', 'Tahap pesanan diperbarui: ' . $next['label']);
     }
 }

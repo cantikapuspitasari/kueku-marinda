@@ -137,6 +137,7 @@
 <!-- BEGIN: LoginForm -->
 <form class="space-y-5" data-purpose="auth-form" method="POST" action="{{ url('/login') }}">
 @csrf
+<input type="hidden" name="portal" value="staff">
 @if ($errors->any())
 <div class="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm font-medium text-red-700">{{ $errors->first() }}</div>
 @endif
