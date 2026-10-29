@@ -47,12 +47,13 @@
     .tombol button { background: #993a3c; color: #fff; }
     .tombol a { background: #fff; color: #993a3c; }
 
-    @page { size: 80mm auto; margin: 0; }
+    /* Ukuran kertas cadangan; tinggi sebenarnya dihitung otomatis oleh skrip di bawah */
+    @page { size: 80mm 200mm; margin: 0; }
     @media print {
-      body { background: #fff; }
+      html, body { width: var(--lebar); margin: 0; padding: 0; background: #fff; }
       .halaman { padding: 0; display: block; }
       .tombol { display: none; }
-      .struk { box-shadow: none; }
+      .struk { box-shadow: none; margin: 0; page-break-inside: avoid; break-inside: avoid; }
     }
   </style>
 </head>
@@ -135,5 +136,21 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Kertas = lebar 8 cm x tinggi sesuai panjang struk (bukan A4).
+  (function () {
+    function aturKertas() {
+      var el = document.querySelector('.struk');
+      if (!el) return;
+      var mm = Math.ceil(el.getBoundingClientRect().height * 25.4 / 96) + 2;
+      var st = document.getElementById('ukuran-kertas');
+      if (!st) { st = document.createElement('style'); st.id = 'ukuran-kertas'; document.head.appendChild(st); }
+      st.textContent = '@page { size: 80mm ' + mm + 'mm; margin: 0; }';
+    }
+    window.addEventListener('load', aturKertas);
+    window.addEventListener('beforeprint', aturKertas);
+  })();
+</script>
 </body>
 </html>
