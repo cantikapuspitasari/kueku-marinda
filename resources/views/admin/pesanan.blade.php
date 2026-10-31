@@ -178,6 +178,52 @@
           </div>
         @endif
 
+        @php
+          $pg = $pengiriman[$p->id_pesanan] ?? null;
+          $tahapInfo = \App\Support\TahapPesanan::hitung($p->status_pesanan, $p->jenis_pengambilan, $pg->status_pengiriman ?? null);
+          $lanjut = \App\Support\TahapPesanan::berikutnya($p->status_pesanan, $p->jenis_pengambilan, $pg->status_pengiriman ?? null);
+          $namaTahap = $delivery
+            ? ['Pesanan di konfirmasi', 'Sedang di kemas', 'Di serahkan ke kurir', 'Kurir menuju lokasi', 'Pesanan sampai tujuan']
+            : ['Pesanan di konfirmasi', 'Sedang di kemas', 'Siap diambil', 'Menuju toko', 'Pesanan diterima'];
+          $kurirNama = $pg ? ($kurir->firstWhere('id_user', $pg->id_user)->nama ?? null) : null;
+        @endphp
+        @if ($tahapInfo['state'] === 'ok')
+          <div class="p-4 rounded-xl border border-warm space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h4 class="text-sm font-bold text-stone-900">Tahap Pengantaran</h4>
+              <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-maroon-light text-maroon-dark">Saat ini: {{ $namaTahap[$tahapInfo['tahap']] }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              @foreach ($namaTahap as $i => $nt)
+                <div class="flex-1 h-1.5 rounded-full {{ $i <= $tahapInfo['tahap'] ? 'bg-maroon' : 'bg-stone-200' }}" title="{{ $nt }}"></div>
+              @endforeach
+            </div>
+            @if ($kurirNama)
+              <p class="text-xs text-stone-500">Kurir: <span class="font-semibold text-stone-700">{{ $kurirNama }}</span></p>
+            @endif
+            @if ($lanjut)
+              <form method="POST" action="{{ route('admin.pesanan.maju', $p->id_pesanan) }}" class="flex flex-wrap items-end justify-between gap-3">
+                @csrf @method('PATCH')
+                @if ($lanjut['butuh_kurir'])
+                  <div class="flex-1 min-w-[200px]">
+                    <label class="text-[11px] text-stone-500">Pilih kurir</label>
+                    <select name="id_kurir" required class="mt-1 w-full text-xs font-medium border-stone-300 rounded-lg focus:border-maroon focus:ring-maroon py-2 px-3 bg-white">
+                      <option value="">- pilih kurir -</option>
+                      @foreach ($kurir as $k)
+                        <option value="{{ $k->id_user }}">{{ $k->nama }}</option>
+                      @endforeach
+                    </select>
+                    @if ($kurir->isEmpty())
+                      <p class="text-[11px] text-red-600 mt-1">Belum ada akun kurir aktif. Owner bisa menambahkannya di Kelola Akun.</p>
+                    @endif
+                  </div>
+                @endif
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-xs font-semibold shadow-sm transition">{{ $lanjut['label'] }}</button>
+              </form>
+            @endif
+          </div>
+        @endif
+
         @if (count($berikut))
           <form method="POST" action="{{ $urlStatus }}" class="p-4 rounded-xl border border-warm flex flex-wrap items-end justify-between gap-3">
             @csrf @method('PATCH')

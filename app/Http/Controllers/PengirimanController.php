@@ -2,60 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pengiriman;
-use App\Models\Pesanan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PengirimanController extends Controller
 {
-    // Daftar pesanan yang perlu diantar hari ini (dipakai Kurir)
-    public function index()
+    // Tugas antar milik kurir yang sedang login (pengiriman orang lain ditolak)
+    private function milikSaya($idPesanan)
     {
-        $pengiriman = Pengiriman::with('pesanan.pembeli', 'pesanan.alamat')
-            ->whereIn('status_pengiriman', ['MENUNGGU', 'DIAMBIL_KURIR', 'DIANTAR'])
-            ->get();
-
-        return view('pengiriman.index', compact('pengiriman'));
+        $pg = DB::table('pengiriman')
+            ->where('id_pesanan', $idPesanan)
+            ->where('id_user', Auth::user()->id_user)
+            ->first();
+        abort_if(!$pg, 404);
+        return $pg;
     }
 
-    // Kurir menandai sudah ambil pesanan dari toko
+    // Kurir mengambil pesanan dari toko (opsional, dipakai kalau tugas masih "MENUNGGU")
     public function ambilDariToko(Request $request, $idPesanan)
     {
-        $validated = $request->validate([
-            'id_kurir' => 'required|exists:users,id_user',
-        ]);
+        $this->milikSaya($idPesanan);
 
-        $pesanan = Pesanan::findOrFail($idPesanan);
-
-        // Bikin record pengiriman kalau belum ada, atau ambil yang sudah ada
-        $pengiriman = Pengiriman::firstOrCreate(
-            ['id_pesanan' => $pesanan->id_pesanan],
-            ['id_kurir' => $validated['id_kurir']]
-        );
-
-        $pengiriman->update([
+        DB::table('pengiriman')->where('id_pesanan', $idPesanan)->update([
             'status_pengiriman' => 'DIAMBIL_KURIR',
             'waktu_diambil'     => now()->toDateString(),
         ]);
+        DB::table('pesanan')->where('id_pesanan', $idPesanan)->update(['status_pesanan' => 'DIPROSES']);
 
-        $pesanan->update(['status_pesanan' => 'DIPROSES']);
-
-        return back()->with('success', 'Pesanan ditandai sudah diambil dari toko');
+        return back()->with('success', 'Pesanan ditandai sudah diambil dari toko.');
     }
 
-    // Kurir menandai pesanan sudah sampai & pembeli sudah bayar
-    // Ini memicu pencatatan pembayaran DAN status terkirim sekaligus (sesuai alur COD)
-    public function tandaiTerkirim(Request $request, $idPesanan)
+    // Langkah 2: Antar Pesanan -> status "Di Perjalanan"
+    public function mulaiAntar($idPesanan)
     {
-        $pengiriman = Pengiriman::where('id_pesanan', $idPesanan)->firstOrFail();
+        $pg = $this->milikSaya($idPesanan);
+        if ($pg->status_pengiriman === 'TERKIRIM') {
+            return back()->with('error', 'Pesanan ini sudah selesai.');
+        }
 
-        $pengiriman->update([
-            'status_pengiriman' => 'TERKIRIM',
-            'waktu_terkirim'    => now()->toDateString(),
+        DB::table('pengiriman')->where('id_pesanan', $idPesanan)->update([
+            'status_pengiriman' => 'DIANTAR',
+            'waktu_diambil'     => $pg->waktu_diambil ?: now()->toDateString(),
         ]);
 
-        $pengiriman->pesanan->update(['status_pesanan' => 'SELESAI']);
+        return back()->with('success', 'Status diperbarui: Di Perjalanan.');
+    }
 
-        return back()->with('success', 'Pesanan berhasil ditandai terkirim. Jangan lupa catat pembayarannya.');
+    // Langkah 3: Serahkan pesanan & terima pembayaran cash -> "Selesai"
+    public function tandaiTerkirim(Request $request, $idPesanan)
+    {
+        $pg = $this->milikSaya($idPesanan);
+        if ($pg->status_pengiriman !== 'DIANTAR') {
+            return back()->with('error', 'Mulai antar pesanan terlebih dahulu (Di Perjalanan).');
+        }
+
+        DB::transaction(function () use ($idPesanan) {
+            DB::table('pengiriman')->where('id_pesanan', $idPesanan)->update([
+                'status_pengiriman' => 'TERKIRIM',
+                'waktu_terkirim'    => now()->toDateString(),
+            ]);
+            DB::table('pesanan')->where('id_pesanan', $idPesanan)->update(['status_pesanan' => 'SELESAI']);
+        });
+
+        return back()->with('success', 'Pesanan selesai. Terima kasih!');
     }
 }

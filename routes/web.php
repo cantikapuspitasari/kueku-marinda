@@ -20,6 +20,11 @@ use App\Http\Controllers\OwnerDashboardController;
 use App\Http\Controllers\OwnerMonitoringController;
 use App\Http\Controllers\OwnerLaporanController;
 use App\Http\Controllers\OwnerAkunController;
+use App\Http\Controllers\GoogleController;
+use App\Http\Controllers\LacakController;
+use App\Http\Controllers\PelangganController;
+use App\Http\Controllers\StaffAkunController;
+use App\Http\Controllers\KurirController;
 use App\Http\Controllers\StrukController;
 
 // ---------- Halaman utama ----------
@@ -39,6 +44,10 @@ Route::get('register', [AuthController::class, 'showRegister'])->name('register'
 Route::post('register', [AuthController::class, 'register']);
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
+// Login dengan Google
+Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
+Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+
 // ---------- Admin: route "create" HARUS di atas route {produk}/{kategori} ----------
 // Kalau tidak, kata "create" terbaca sebagai ID dan masuk ke method show().
 Route::middleware(['auth', 'role:ADMIN'])->group(function () {
@@ -47,6 +56,11 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 });
 
 // ---------- Produk & Kategori: boleh dilihat siapa saja (termasuk belum login) ----------
+// Halaman Favorit (harus di atas produk/{id})
+Route::get('favorit', function () {
+    return view('produk.favorit', ['produkJs' => \App\Http\Controllers\ProdukController::katalogJs()]);
+})->name('favorit');
+
 Route::get('produk', [ProdukController::class, 'index'])->name('produk.index');
 Route::get('produk/{id}', [ProdukController::class, 'show'])->name('produk.show');
 Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
@@ -60,6 +74,26 @@ Route::get('checkout', [CheckoutController::class, 'index'])->name('checkout.ind
 // Kalau tidak, kata "selesai" terbaca sebagai ID pesanan dan menghasilkan 404.
 Route::get('pesanan/selesai', [PesananController::class, 'selesai'])->name('pesanan.selesai');
 Route::get('pesanan/detail', [PesananController::class, 'detail'])->name('pesanan.detail');
+Route::get('pesanan/lacak/{kode}', [LacakController::class, 'status'])->middleware('auth')->name('pesanan.lacak');
+
+// ---------- Pelanggan: Pesanan Saya & Profil ----------
+Route::middleware('auth')->group(function () {
+    Route::get('pesanan-saya', [PelangganController::class, 'pesanan'])->name('pesanan.saya');
+    Route::get('profil', [PelangganController::class, 'profil'])->name('profil');
+    Route::get('profil/informasi', [PelangganController::class, 'info'])->name('profil.info');
+    Route::put('profil/informasi', [PelangganController::class, 'updateInfo'])->name('profil.info.update');
+    Route::get('profil/alamat', [PelangganController::class, 'alamat'])->name('profil.alamat');
+    Route::post('profil/alamat', [PelangganController::class, 'tambahAlamat'])->name('profil.alamat.store');
+    Route::put('profil/alamat/{id}', [PelangganController::class, 'ubahAlamat'])->name('profil.alamat.update');
+    Route::delete('profil/alamat/{id}', [PelangganController::class, 'hapusAlamat'])->name('profil.alamat.destroy');
+});
+
+// ---------- Akun Saya: Admin, Owner, Kurir ----------
+Route::middleware(['auth', 'role:ADMIN,OWNER,KURIR'])->group(function () {
+    Route::get('akun-saya', [StaffAkunController::class, 'index'])->name('akun.saya');
+    Route::put('akun-saya', [StaffAkunController::class, 'updateInfo'])->name('akun.saya.update');
+    Route::put('akun-saya/password', [StaffAkunController::class, 'updatePassword'])->name('akun.saya.password');
+});
 
 // ---------- Semua yang sudah login (peran apapun) ----------
 Route::middleware('auth')->group(function () {
@@ -79,6 +113,7 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
     Route::redirect('admin', '/admin/dashboard');
     Route::get('admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('admin/pesanan', [AdminPesananController::class, 'index'])->name('admin.pesanan');
+    Route::patch('admin/pesanan/{id}/maju', [AdminPesananController::class, 'maju'])->name('admin.pesanan.maju');
 
     // Kelola Produk (route "create" harus di atas route yang memakai {id})
     Route::get('admin/produk', [AdminProdukController::class, 'index'])->name('admin.produk.index');
@@ -107,8 +142,12 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 
 // ---------- Khusus Kurir: pengiriman ----------
 Route::middleware(['auth', 'role:KURIR'])->group(function () {
-    Route::get('pengiriman', [PengirimanController::class, 'index'])->name('pengiriman.index');
+    // Alamat lama /pengiriman diarahkan ke dashboard kurir
+    Route::redirect('pengiriman', '/kurir/dashboard')->name('pengiriman.index');
+    Route::get('kurir/dashboard', [KurirController::class, 'dashboard'])->name('kurir.dashboard');
+    Route::get('kurir/pesanan', [KurirController::class, 'pesanan'])->name('kurir.pesanan');
     Route::patch('pesanan/{idPesanan}/ambil-toko', [PengirimanController::class, 'ambilDariToko'])->name('pengiriman.ambilDariToko');
+    Route::patch('pesanan/{idPesanan}/mulai-antar', [PengirimanController::class, 'mulaiAntar'])->name('pengiriman.mulaiAntar');
     Route::patch('pesanan/{idPesanan}/terkirim', [PengirimanController::class, 'tandaiTerkirim'])->name('pengiriman.tandaiTerkirim');
 });
 

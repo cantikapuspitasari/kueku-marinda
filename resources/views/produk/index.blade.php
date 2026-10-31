@@ -53,11 +53,11 @@
         <a class="text-[#696464] hover:text-[#993A3C] transition-colors py-1 inline-flex items-center gap-1.5" href="{{ url('/keranjang') }}">keranjang
       <span id="cart-badge-count" class="bg-[#993A3C] text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">0</span>
     </a>
-    <a class="text-[#696464] hover:text-[#993A3C] transition-colors py-1" href="#favorite">Favorite</a>
-    <a class="text-[#696464] hover:text-[#993A3C] transition-colors py-1" href="#pesanan">Pesanan</a>
+    <a class="text-[#696464] hover:text-[#993A3C] transition-colors py-1" href="{{ route('favorit') }}">Favorite</a>
+    <a class="text-[#696464] hover:text-[#993A3C] transition-colors py-1" href="{{ route('pesanan.saya') }}">Pesanan</a>
   </nav>
   <div class="flex items-center">
-    <a class="inline-flex items-center gap-2 bg-[#F6F3EE] hover:bg-[#EFECE6] border border-[#993A3C]/20 text-[#2D2828] px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all shadow-sm" href="#profil">
+    <a class="inline-flex items-center gap-2 bg-[#F6F3EE] hover:bg-[#EFECE6] border border-[#993A3C]/20 text-[#2D2828] px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all shadow-sm" href="{{ route('profil') }}">
       <svg class="w-4 h-4 text-[#993A3C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
       <span class="whitespace-nowrap">Profil pelanggan</span>
     </a>
@@ -66,11 +66,6 @@
 </header>
 
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12" id="beranda">
-
-<!-- ===================== FAVORIT ===================== -->
-<section class="pt-4 pb-12" id="favorite">
-  <div id="fav-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
-</section>
 
 <!-- Hero -->
 <section class="bg-gradient-to-br from-cream to-white rounded-3xl p-8 sm:p-12 border border-orange-100/60 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
@@ -202,26 +197,11 @@ function syncHearts() {
   });
 }
 
-function renderFav() {
-  const grid = document.getElementById("fav-grid");
-  if (grid) {
-    grid.innerHTML = "";
-    getFav().forEach(id => {
-      const src = document.querySelector('.product-card[data-id="' + id + '"]');
-      if (!src) return;
-      const clone = src.cloneNode(true);
-      clone.style.display = "";
-      grid.appendChild(clone);
-    });
-  }
-  syncHearts();
-}
-
 function toggleFav(id) {
   let favs = getFav();
   favs = favs.includes(id) ? favs.filter(x => x !== id) : [...favs, id];
   saveFav(favs);
-  renderFav();
+  syncHearts();
 }
 
 /* ---------- Satu pendengar klik untuk semua kartu (termasuk salinan di Favorit) ---------- */
@@ -269,7 +249,7 @@ const VALID_IDS = @json($validIds);
 })();
 
 refreshBadge();
-renderFav();
+syncHearts();
 
 /* ---------- Pencarian sederhana ---------- */
 const searchInput = document.getElementById("search-input");
