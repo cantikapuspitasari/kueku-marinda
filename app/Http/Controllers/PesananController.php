@@ -13,7 +13,7 @@ use App\Support\Telepon;
 class PesananController extends Controller
 {
     // Ongkos kirim tetap untuk pesanan DELIVERY (dipakai juga oleh halaman keranjang, checkout, dan detail)
-    const ONGKIR = 5000;
+    const ONGKIR = 10000;
 
     // Menampilkan daftar pesanan (beda isi tergantung role: pembeli lihat punya sendiri, admin lihat semua)
     public function index()

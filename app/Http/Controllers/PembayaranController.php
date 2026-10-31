@@ -26,7 +26,7 @@ class PembayaranController extends Controller
         // Diantar kurir  -> kurir yang menangani pengiriman; kalau belum ada kurir, staff yang sedang login.
         $idPenerima = null;
         if ($pesanan->jenis_pengambilan === 'DELIVERY') {
-            $idPenerima = Pengiriman::where('id_pesanan', $pesanan->id_pesanan)->value('id_kurir');
+            $idPenerima = Pengiriman::where('id_pesanan', $pesanan->id_pesanan)->value('id_user');
         }
         $idPenerima = $idPenerima ?: Auth::id();
 
@@ -38,7 +38,7 @@ class PembayaranController extends Controller
         DB::transaction(function () use ($pesanan, $validated, $idPenerima) {
             Pembayaran::create([
                 'id_pesanan'        => $pesanan->id_pesanan,
-                'id_penerima'       => $idPenerima,
+                'id_user'           => $idPenerima,
                 'jumlah_bayar'      => $pesanan->total_harga,
                 'tempat_pembayaran' => $validated['tempat_pembayaran'],
             ]);

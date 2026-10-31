@@ -130,9 +130,10 @@
               </div>
               <div class="space-y-1">
                 <h3 class="text-base font-bold text-stone-900 leading-snug">Toko Kueku Marinda</h3>
-                <p class="text-sm text-stone-700 leading-relaxed">Jl. Ciwidey No. 12, Bandung Wetan (Patokan 100m timur Alun-alun Ciwidey)</p>
+                <p class="text-sm text-stone-700 leading-relaxed">Jl. Terusan Ps. Cibeureum, Ciwidey, Kec. Ciwidey, Kabupaten Bandung, Jawa Barat 40973</p>
                 <div class="pt-1 text-xs text-[#993a3c] font-medium">
-                  <a class="underline hover:text-[#822f31] inline-flex items-center gap-1" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Jl.+Ciwidey+No.+12+Bandung">
+                  <a class="underline hover:text-[#822f31] inline-flex items-center gap-1" target="_blank" rel="noopener" href="https://maps.app.goo.gl/6cqGcecZ7vXMMLFW8">
+    Buka Petunjuk Arah Google Maps
                     Buka Petunjuk Arah Google Maps
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
                   </a>
