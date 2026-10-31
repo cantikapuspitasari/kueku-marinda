@@ -9,11 +9,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Support\Telepon;
+use Carbon\Carbon;
 
 class PesananController extends Controller
 {
     // Ongkos kirim tetap untuk pesanan DELIVERY (dipakai juga oleh halaman keranjang, checkout, dan detail)
-    const ONGKIR = 10000;
+    const ONGKIR = 5000;
+
+    // Pesanan diproses minimal sekian jam sebelum diambil/dikirim
+    const MIN_JAM_PROSES = 3;
+
+    // Jam operasional (WIB): [buka, tutup). Slot terakhir = 30 menit sebelum tutup.
+    const JAM_OPERASIONAL = [
+        'PICKUP'   => ['08:00', '15:00'],
+        'DELIVERY' => ['09:00', '18:00'],
+    ];
 
     // Menampilkan daftar pesanan (beda isi tergantung role: pembeli lihat punya sendiri, admin lihat semua)
     public function index()
@@ -49,7 +59,8 @@ class PesananController extends Controller
             'id_alamat'          => 'nullable|exists:alamat,id_alamat',
             'alamat_lengkap'     => 'nullable|string|max:500',
             'no_telepon'         => 'required|string|min:9|max:20',
-            'tanggal_ambil'      => 'required|date|after_or_equal:today',
+            'tanggal_ambil'      => 'required|date_format:Y-m-d',
+            'jam_ambil'          => 'required|date_format:H:i',
             'jenis_pengambilan'  => 'required|in:PICKUP,DELIVERY',
             'items'              => 'required|array|min:1',
             'items.*.id_produk'  => 'required|exists:produk,id_produk',
@@ -58,6 +69,21 @@ class PesananController extends Controller
 
         $validated['no_telepon'] = Telepon::normalisasi($validated['no_telepon']);
         $delivery = $validated['jenis_pengambilan'] === 'DELIVERY';
+
+        // ---- Aturan waktu: minimal 3 jam sebelum diambil/dikirim (zona waktu WIB) ----
+        [$buka, $tutup] = self::JAM_OPERASIONAL[$validated['jenis_pengambilan']];
+        if ($validated['jam_ambil'] < $buka || $validated['jam_ambil'] >= $tutup) {
+            return $this->gagal($request, "Jam di luar jam operasional ($buka - $tutup WIB).");
+        }
+        $wib = 'Asia/Jakarta';
+        $waktuPilihan = Carbon::createFromFormat('Y-m-d H:i', $validated['tanggal_ambil'] . ' ' . $validated['jam_ambil'], $wib);
+        $minimal = Carbon::now($wib)->addHours(self::MIN_JAM_PROSES);
+        if ($waktuPilihan->lt($minimal)) {
+            return $this->gagal($request, 'Pesanan diproses minimal ' . self::MIN_JAM_PROSES . ' jam sebelum diambil/dikirim. Waktu paling cepat: ' . $minimal->format('d-m-Y H:i') . ' WIB.');
+        }
+        if ($waktuPilihan->gt(Carbon::now($wib)->addDays(7)->endOfDay())) {
+            return $this->gagal($request, 'Pesanan hanya bisa dijadwalkan sampai 7 hari ke depan.');
+        }
 
         // Kalau delivery, alamat wajib diisi (pilih alamat tersimpan atau ketik alamat baru)
         if ($delivery && empty($validated['id_alamat']) && empty($validated['alamat_lengkap'])) {
@@ -83,7 +109,7 @@ class PesananController extends Controller
                 DB::table('users')->where('id_user', $user->id_user)
                     ->update(['no_telepon' => $validated['no_telepon']]);
 
-                $idPembeli = DB::table('pembeli')->where('email', $user->email)->value('id_pembeli');
+                $idPembeli = \App\Support\PembeliAkun::id($user);
                 if ($idPembeli) {
                     DB::table('pembeli')->where('id_pembeli', $idPembeli)
                         ->update(['no_telepon' => $validated['no_telepon']]);

@@ -158,7 +158,7 @@
             <div>
               <label class="block text-xs font-medium text-stone-600 mb-1.5" for="date">Pilih Tanggal</label>
               <input class="w-full bg-[#fcf9f4] border border-[#d8cdb8] rounded-xl px-4 py-2.5 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#993a3c]/30 focus:border-[#993a3c] transition-all cursor-pointer" id="date" type="date">
-              <p class="mt-1.5 text-xs text-stone-500">Tersedia H+0 sampai H+7</p>
+              <p id="date-hint" class="mt-1.5 text-xs text-stone-500">Tersedia H+0 sampai H+7</p>
             </div>
             <div>
               <label id="time-label" class="block text-xs font-medium text-stone-600 mb-1.5" for="time">Pilih Jam Antar</label>
@@ -166,6 +166,7 @@
               <p id="time-hint" class="mt-1.5 text-xs text-stone-500"></p>
             </div>
           </div>
+          <p class="mt-3 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Pesanan diproses minimal {{ \App\Http\Controllers\PesananController::MIN_JAM_PROSES }} jam sebelum diambil/dikirim.</p>
         </div>
       </div>
     </section>
@@ -230,35 +231,72 @@ function saveCart(c) { try { localStorage.setItem(CART_KEY, JSON.stringify(c)); 
 
 let mode = "kurir";
 
-const SLOTS = {
-  kurir: [
-    ["pagi", "Pagi (09:00 - 12:00 WIB)"],
-    ["siang", "Siang (13:00 - 15:00 WIB)"],
-    ["sore", "Sore (16:00 - 18:00 WIB)"]
-  ],
-  toko: [
-    ["pagi", "Pagi (08:30 - 10:30 WIB)"],
-    ["siang", "Siang (10:30 - 12:30 WIB)"],
-    ["sore", "Siang-Sore (13:00 - 15:00 WIB)"]
-  ]
-};
+// ---- Aturan waktu: minimal 3 jam, zona waktu WIB (sama dengan server) ----
+const MIN_JAM = {{ \App\Http\Controllers\PesananController::MIN_JAM_PROSES }};
+const JAM_OP = @json(\App\Http\Controllers\PesananController::JAM_OPERASIONAL);
+const SERVER_NOW = {{ now('Asia/Jakarta')->getTimestamp() * 1000 }};
+const LOADED_AT = Date.now();
+const WIB_MS = 7 * 3600 * 1000;
+const pad2 = n => String(n).padStart(2, "0");
+const nowMs = () => SERVER_NOW + (Date.now() - LOADED_AT);   // "sekarang" menurut server (WIB)
+
+function hm(str) { const p = str.split(":"); return Number(p[0]) * 60 + Number(p[1]); }
+function bukaTutup(m) { const j = JAM_OP[m === "kurir" ? "DELIVERY" : "PICKUP"]; return [hm(j[0]), hm(j[1])]; }
+function fmtWib(ms) {
+  const d = new Date(ms + WIB_MS);
+  return d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1) + "-" + pad2(d.getUTCDate());
+}
+function wibToMs(dateStr, menit) {
+  const p = dateStr.split("-").map(Number);
+  return Date.UTC(p[0], p[1] - 1, p[2], Math.floor(menit / 60), menit % 60) - WIB_MS;
+}
+
+// Slot 30 menit pada tanggal tertentu yang masih >= sekarang + 3 jam
+function slotsFor(dateStr, m) {
+  const [buka, tutup] = bukaTutup(m);
+  const minimal = nowMs() + MIN_JAM * 3600 * 1000;
+  const out = [];
+  for (let t = buka; t < tutup; t += 30) {
+    if (wibToMs(dateStr, t) >= minimal) out.push(t);
+  }
+  return out;
+}
+
+// Tanggal paling awal yang masih punya slot (hari ini, atau besok kalau hari ini sudah tutup)
+function earliestDate(m) {
+  for (let i = 0; i <= 7; i++) {
+    const d = fmtWib(nowMs() + i * 86400000);
+    if (slotsFor(d, m).length) return d;
+  }
+  return fmtWib(nowMs() + 86400000);
+}
 
 const ACTIVE = ["bg-[#993a3c]", "text-white", "shadow-sm"];
 const INACTIVE = ["text-stone-600", "hover:text-stone-900", "hover:bg-stone-200/50"];
 
-function fmtDate(d) {
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const t = String(d.getDate()).padStart(2, "0");
-  return d.getFullYear() + "-" + m + "-" + t;
+function renderDate() {
+  const el = document.getElementById("date");
+  const hariIni = fmtWib(nowMs());
+  const awal = earliestDate(mode);
+  el.min = awal;
+  el.max = fmtWib(nowMs() + 7 * 86400000);
+  if (!el.value || el.value < awal) el.value = awal;
+  document.getElementById("date-hint").textContent = awal > hariIni
+    ? "Pesanan hari ini sudah ditutup (kurang dari " + MIN_JAM + " jam sebelum jam operasional berakhir). Tanggal dimulai besok."
+    : "Tersedia H+0 sampai H+7";
+  renderSlots();
 }
 
-function initDate() {
-  const el = document.getElementById("date");
-  const today = new Date();
-  const max = new Date(); max.setDate(max.getDate() + 7);
-  el.min = fmtDate(today);
-  el.max = fmtDate(max);
-  el.value = fmtDate(today);
+function renderSlots() {
+  const sel = document.getElementById("time");
+  const slots = slotsFor(document.getElementById("date").value, mode);
+  const lama = sel.value;
+  sel.innerHTML = slots.map(t => {
+    const v = pad2(Math.floor(t / 60)) + ":" + pad2(t % 60);
+    return '<option value="' + v + '">' + v + " WIB</option>";
+  }).join("");
+  if (!slots.length) sel.innerHTML = '<option value="">Tidak ada jam tersedia</option>';
+  else if (lama && sel.querySelector('option[value="' + lama + '"]')) sel.value = lama;
 }
 
 function setMode(m) {
@@ -273,10 +311,9 @@ function setMode(m) {
 
   document.getElementById("jadwal-title").textContent = m === "kurir" ? "Tentukan jadwal pengantaran pesanan" : "Tentukan waktu pengambilan";
   document.getElementById("time-label").textContent = m === "kurir" ? "Pilih Jam Antar" : "Pilih Jam Ambil";
-  document.getElementById("time-hint").textContent = m === "toko" ? "Harap datang sesuai rentang waktu" : "";
+  document.getElementById("time-hint").textContent = m === "toko" ? "Harap datang tepat waktu sesuai jam yang dipilih" : "Jam antar diperkirakan, kurir akan menghubungi Anda";
 
-  const sel = document.getElementById("time");
-  sel.innerHTML = SLOTS[m].map(s => '<option value="' + s[0] + '"' + (s[0] === "siang" ? " selected" : "") + ">" + s[1] + "</option>").join("");
+  renderDate();
 
   document.getElementById("form-error").classList.add("hidden");
   renderSummary();
@@ -356,6 +393,14 @@ document.getElementById("btn-next").addEventListener("click", () => {
   if (mode === "kurir" && address.length < 10) msg = "Alamat pengiriman wajib diisi dengan lengkap.";
   if (!msg && phone.length < 9) msg = "No. handphone / WhatsApp wajib diisi dengan benar.";
   if (!msg && !date) msg = "Tanggal belum dipilih.";
+  if (!msg && !time) msg = "Belum ada jam yang tersedia. Pilih tanggal lain.";
+  if (!msg && time) {
+    // cek ulang aturan 3 jam (waktu terus berjalan sejak halaman dibuka)
+    if (wibToMs(date, hm(time)) < nowMs() + MIN_JAM * 3600 * 1000) {
+      msg = "Pesanan diproses minimal " + MIN_JAM + " jam sebelum diambil/dikirim. Silakan pilih jam lain.";
+      renderDate();
+    }
+  }
 
   if (msg) { err.textContent = msg; err.classList.remove("hidden"); return; }
   err.classList.add("hidden");
@@ -389,6 +434,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
       alamat_lengkap: mode === "kurir" ? address : null,
       no_telepon: phone,
       tanggal_ambil: date,
+      jam_ambil: time,
       items: items
     })
   }).then(async res => {
@@ -409,7 +455,8 @@ document.getElementById("btn-next").addEventListener("click", () => {
       address: mode === "kurir" ? address : "",
       phone: phone,
       date: date,
-      time: time,
+      time: Number(time.split(":")[0]) < 12 ? "pagi" : (Number(time.split(":")[0]) < 15 ? "siang" : "sore"),
+      jam: time,
       cart: cartNow
     };
     try { localStorage.setItem("kueku_last_order", JSON.stringify(order)); localStorage.removeItem(CART_KEY); } catch (e) {}
@@ -421,7 +468,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
   });
 });
 
-initDate();
+document.getElementById("date").addEventListener("change", renderSlots);
 setMode("kurir");
 </script>
 </body>
