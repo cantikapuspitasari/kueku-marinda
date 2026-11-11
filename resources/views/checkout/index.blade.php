@@ -26,6 +26,11 @@
   input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
   input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  #peta { isolation: isolate; }
+  #peta img { max-width: none !important; max-height: none !important; }
+</style>
 </head>
 <body class="min-h-screen bg-[#fcf9f4] text-[#2c2221] antialiased flex flex-col justify-between">
 
@@ -95,6 +100,27 @@
               <span class="text-xs font-medium text-stone-500">Wajib diisi</span>
             </div>
             <textarea class="w-full bg-[#fcf9f4] border border-[#d8cdb8] rounded-xl p-3.5 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#993a3c]/30 focus:border-[#993a3c] transition-all resize-none shadow-inner" id="address" placeholder="Tuliskan nama jalan, no. rumah, RT/RW, kelurahan/kecamatan, dan patokan..." rows="3"></textarea>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="btn-lokasi" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#993a3c] hover:bg-[#822f31] text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                Gunakan lokasi saya saat ini
+              </button>
+              <button id="btn-cari" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#993a3c] text-[#993a3c] hover:bg-[#fbf2f2] text-xs sm:text-sm font-semibold transition cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                Cari alamat di peta
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="block text-base font-semibold text-stone-800">Lokasi Pengantaran</span>
+              <span class="text-xs font-medium text-stone-500">Klik peta atau geser pin ke lokasimu</span>
+            </div>
+            <div id="peta" class="w-full h-72 rounded-xl border border-[#d8cdb8] overflow-hidden relative z-0"></div>
+            <div id="ongkir-info" class="mt-3 text-sm rounded-xl px-4 py-3 border bg-[#fcf9f4] border-[#e8dfcf] text-stone-600">
+              Cara termudah: klik peta tepat di rumahmu (atau geser pin). Tombol "Cari alamat di peta" memindahkan pin sesuai alamat yang kamu ketik. Ongkir dihitung otomatis dari jarak ke toko (Rp{{ number_format(\App\Support\Ongkir::TARIF[0][1], 0, ',', '.') }} - Rp{{ number_format(\App\Support\Ongkir::TARIF[array_key_last(\App\Support\Ongkir::TARIF)][1], 0, ',', '.') }}, maksimal {{ \App\Support\Ongkir::MAKS_KM }} km).
+            </div>
           </div>
 
           <div>
@@ -130,10 +156,9 @@
               </div>
               <div class="space-y-1">
                 <h3 class="text-base font-bold text-stone-900 leading-snug">Toko Kueku Marinda</h3>
-                <p class="text-sm text-stone-700 leading-relaxed">Jl. Terusan Ps. Cibeureum, Ciwidey, Kec. Ciwidey, Kabupaten Bandung, Jawa Barat 40973</p>
+                <p class="text-sm text-stone-700 leading-relaxed">Jl. Terusan Ps. Cibeureum No.13, Ciwidey, Kec. Ciwidey, Kabupaten Bandung, Jawa Barat 40973</p>
                 <div class="pt-1 text-xs text-[#993a3c] font-medium">
-                  <a class="underline hover:text-[#822f31] inline-flex items-center gap-1" target="_blank" rel="noopener" href="https://maps.app.goo.gl/6cqGcecZ7vXMMLFW8">
-    Buka Petunjuk Arah Google Maps
+                  <a class="underline hover:text-[#822f31] inline-flex items-center gap-1" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=-7.0979546,107.4676555">
                     Buka Petunjuk Arah Google Maps
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
                   </a>
@@ -219,17 +244,134 @@
   <div class="max-w-7xl mx-auto px-6"><p>© 2026 Kueku Marinda. Semua hak cipta dilindungi undang-undang.</p></div>
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ---------- Data produk (id sama dengan data-id di beranda) ---------- */
 const PRODUCTS = @json($produkJs);
 
 const CART_KEY = "kueku_cart";
-const ONGKIR = {{ \App\Http\Controllers\PesananController::ONGKIR }};
 const rp = n => "Rp " + n.toLocaleString("id-ID");
 function getCart() { try { return JSON.parse(localStorage.getItem(CART_KEY)) || {}; } catch (e) { return {}; } }
 function saveCart(c) { try { localStorage.setItem(CART_KEY, JSON.stringify(c)); } catch (e) {} }
 
 let mode = "kurir";
+
+/* ---------- Peta & ongkir otomatis (hitungan resmi dilakukan server) ---------- */
+const TOKO = { lat: {{ \App\Support\Ongkir::TOKO_LAT }}, lng: {{ \App\Support\Ongkir::TOKO_LNG }} };
+let peta = null, pin = null, titik = null;
+let ongkir = null, ongkirToken = "", jarakKm = null;
+let alamatOtomatis = true;   // true selama kolom alamat belum diketik manual
+let seq = 0;
+
+function info(pesan, tipe) {
+  const el = document.getElementById("ongkir-info");
+  el.textContent = pesan;
+  el.className = "mt-3 text-sm rounded-xl px-4 py-3 border " +
+    (tipe === "ok" ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-medium"
+    : tipe === "err" ? "bg-red-50 border-red-200 text-red-700 font-medium"
+    : "bg-[#fcf9f4] border-[#e8dfcf] text-stone-600");
+}
+
+function initPeta() {
+  if (peta || typeof L === "undefined") return;
+  peta = L.map("peta").setView([TOKO.lat, TOKO.lng], 13);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(peta);
+  L.circleMarker([TOKO.lat, TOKO.lng], { radius: 9, color: "#7e2e30", weight: 2, fillColor: "#993a3c", fillOpacity: 0.9 })
+    .addTo(peta).bindTooltip("Toko Kueku Marinda");
+  peta.on("click", e => pasangPin(e.latlng.lat, e.latlng.lng, true));
+}
+
+function pasangPin(lat, lng, isiAlamat) {
+  if (!peta) return;
+  titik = { lat, lng };
+  if (!pin) {
+    pin = L.marker([lat, lng], { draggable: true }).addTo(peta);
+    pin.on("dragend", () => { const p = pin.getLatLng(); pasangPin(p.lat, p.lng, true); });
+  } else {
+    pin.setLatLng([lat, lng]);
+  }
+  peta.setView([lat, lng], Math.max(peta.getZoom(), 15));
+  hitungOngkir(lat, lng);
+  if (isiAlamat) isiAlamatDariTitik(lat, lng);
+}
+
+// Alamat otomatis dari titik peta (hanya bila pelanggan belum mengetik alamat sendiri)
+async function isiAlamatDariTitik(lat, lng) {
+  const box = document.getElementById("address");
+  if (box.value.trim() && !alamatOtomatis) return;
+  try {
+    const res = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=id&zoom=18&lat=" + lat + "&lon=" + lng);
+    const d = await res.json();
+    if (d && d.display_name && (!box.value.trim() || alamatOtomatis)) {
+      box.value = d.display_name;
+      alamatOtomatis = true;
+    }
+  } catch (e) { /* abaikan: pelanggan tetap bisa mengetik alamat */ }
+}
+
+async function cariAlamat() {
+  const q = document.getElementById("address").value.trim();
+  if (q.length < 5) { info("Ketik alamat dulu (minimal 5 huruf), lalu klik Cari alamat di peta.", "err"); return; }
+  info("Mencari alamat di peta...");
+  const base = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=id&accept-language=id&viewbox=107.2,-6.9,107.7,-7.35&q=";
+  try {
+    let data = await (await fetch(base + encodeURIComponent(q))).json();
+    if (!data.length) data = await (await fetch(base + encodeURIComponent(q + ", Ciwidey, Bandung"))).json();
+    if (!data.length) { info("Alamat tidak ditemukan di peta. Klik langsung lokasi rumahmu di peta.", "err"); return; }
+    pasangPin(parseFloat(data[0].lat), parseFloat(data[0].lon), false);
+  } catch (e) {
+    info("Pencarian alamat gagal. Klik langsung lokasi rumahmu di peta.", "err");
+  }
+}
+
+let catatanAkurasi = "", catatanLat = null, catatanLng = null;
+function lokasiSaya() {
+  if (!navigator.geolocation) { info("Browser tidak mendukung lokasi. Klik lokasi rumahmu di peta.", "err"); return; }
+  info("Mengambil lokasimu saat ini...");
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const acc = Math.round(pos.coords.accuracy || 0);
+      catatanLat = pos.coords.latitude; catatanLng = pos.coords.longitude;
+      catatanAkurasi = acc > 300
+        ? " Perhatian: akurasi lokasi perangkat hanya sekitar " + acc + " m (laptop tanpa GPS sering meleset). Kalau pin belum pas, geser pin atau klik di peta ke rumahmu."
+        : "";
+      pasangPin(pos.coords.latitude, pos.coords.longitude, true);
+    },
+    err => info(err.code === 1
+      ? "Izin lokasi ditolak. Izinkan lokasi di browser, atau klik lokasi rumahmu di peta."
+      : "Lokasi tidak bisa diambil. Klik lokasi rumahmu di peta.", "err"),
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
+async function hitungOngkir(lat, lng) {
+  const urut = ++seq;
+  ongkir = null; ongkirToken = ""; jarakKm = null;
+  info("Menghitung jarak dan ongkir...");
+  renderSummary();
+  try {
+    const res = await fetch("{{ url('/pesanan') }}", {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
+      body: JSON.stringify({ mode: "hitung_ongkir", lat: lat, lng: lng })
+    });
+    if (res.status === 401 || res.status === 419) { window.location.href = "{{ route('login') }}"; return; }
+    const d = await res.json().catch(() => ({}));
+    if (urut !== seq) return;   // ada pilihan lokasi yang lebih baru
+    if (!res.ok) {
+      info(d.message || (d.errors ? Object.values(d.errors)[0][0] : "Ongkir tidak bisa dihitung."), "err");
+      renderSummary();
+      return;
+    }
+    ongkir = d.ongkir; ongkirToken = d.token; jarakKm = d.jarak_km;
+    info("Jarak ± " + String(d.jarak_km).replace(".", ",") + " km dari toko • Ongkir " + rp(d.ongkir) +
+      (d.metode === "perkiraan" ? " (jarak perkiraan, layanan peta sedang sibuk)" : "") +
+      (catatanAkurasi && lat === catatanLat && lng === catatanLng ? catatanAkurasi : ""), "ok");
+    renderSummary();
+  } catch (e) {
+    if (urut === seq) { info("Gagal menghitung ongkir. Periksa koneksi lalu pilih lokasi lagi.", "err"); renderSummary(); }
+  }
+}
 
 // ---- Aturan waktu: minimal 3 jam, zona waktu WIB (sama dengan server) ----
 const MIN_JAM = {{ \App\Http\Controllers\PesananController::MIN_JAM_PROSES }};
@@ -317,6 +459,7 @@ function setMode(m) {
 
   document.getElementById("form-error").classList.add("hidden");
   renderSummary();
+  if (m === "kurir" && peta) setTimeout(() => peta.invalidateSize(), 60);
 }
 
 function renderSummary() {
@@ -355,9 +498,14 @@ function renderSummary() {
   const shipEl = document.getElementById("sum-ship");
   let ship = 0;
   if (mode === "kurir") {
-    ship = count ? ONGKIR : 0;
-    shipEl.className = "font-medium text-stone-800";
-    shipEl.textContent = rp(ship);
+    if (ongkir === null) {
+      shipEl.className = "text-xs font-medium text-stone-500";
+      shipEl.textContent = "Dihitung setelah lokasi dipilih";
+    } else {
+      ship = ongkir;
+      shipEl.className = "font-medium text-stone-800";
+      shipEl.textContent = rp(ship) + (jarakKm !== null ? " (" + String(jarakKm).replace(".", ",") + " km)" : "");
+    }
   } else {
     shipEl.className = "text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
     shipEl.textContent = "Gratis (Ambil di Toko)";
@@ -391,6 +539,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
 
   let msg = "";
   if (mode === "kurir" && address.length < 10) msg = "Alamat pengiriman wajib diisi dengan lengkap.";
+  if (!msg && mode === "kurir" && !ongkirToken) msg = "Tandai lokasi pengantaran di peta dulu supaya ongkir bisa dihitung.";
   if (!msg && phone.length < 9) msg = "No. handphone / WhatsApp wajib diisi dengan benar.";
   if (!msg && !date) msg = "Tanggal belum dipilih.";
   if (!msg && !time) msg = "Belum ada jam yang tersedia. Pilih tanggal lain.";
@@ -433,6 +582,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
       jenis_pengambilan: mode === "kurir" ? "DELIVERY" : "PICKUP",
       alamat_lengkap: mode === "kurir" ? address : null,
       no_telepon: phone,
+      ongkir_token: mode === "kurir" ? ongkirToken : null,
       tanggal_ambil: date,
       jam_ambil: time,
       items: items
@@ -454,6 +604,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
       mode: mode,
       address: mode === "kurir" ? address : "",
       phone: phone,
+      ongkir: mode === "kurir" ? ongkir : 0,
       date: date,
       time: Number(time.split(":")[0]) < 12 ? "pagi" : (Number(time.split(":")[0]) < 15 ? "siang" : "sore"),
       jam: time,
@@ -469,6 +620,18 @@ document.getElementById("btn-next").addEventListener("click", () => {
 });
 
 document.getElementById("date").addEventListener("change", renderSlots);
+
+// Peta: tombol & kolom alamat
+document.getElementById("btn-lokasi").addEventListener("click", lokasiSaya);
+document.getElementById("btn-cari").addEventListener("click", cariAlamat);
+document.getElementById("address").addEventListener("input", () => { alamatOtomatis = false; });
+// Selesai mengetik alamat dan belum ada pin -> otomatis dicarikan di peta
+document.getElementById("address").addEventListener("change", () => {
+  if (!titik && document.getElementById("address").value.trim().length >= 10) cariAlamat();
+});
+
+initPeta();
+if (!peta) info("Peta gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.", "err");
 setMode("kurir");
 </script>
 </body>

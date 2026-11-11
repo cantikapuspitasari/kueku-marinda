@@ -25,7 +25,7 @@
     .baris  { display: flex; justify-content: space-between; gap: 8px; }
     .baris > span:last-child { text-align: right; white-space: nowrap; }
 
-    .logo { max-width: 55mm; max-height: 18mm; display: block; margin: 0 auto 3px; }
+    .logo { width: 22mm; height: auto; display: block; margin: 0 auto 3px; }
     .toko { font-size: 14px; font-weight: bold; letter-spacing: .5px; }
     .kode { font-size: var(--fs-item); font-weight: bold; }
 
@@ -74,9 +74,14 @@
     <div class="tengah">
       @if (file_exists($logo))
         <img src="{{ asset('images/logo-struk.png') }}" alt="Kueku Marinda" class="logo">
+      @else
+        <div class="toko">KUEKU MARINDA</div>
       @endif
-      <div class="toko">KUEKU MARINDA</div>
       <div class="kode">{{ $pesanan->kode_pesanan }}</div>
+      <div class="kecil" style="margin-top:4px;">
+        <div>Jl. Terusan Ps. Cibeureum No.13, Ciwidey, Kec. Ciwidey, Kabupaten Bandung, Jawa Barat 40973</div>
+        <div>Whatsapp : 081214785234</div>
+      </div>
     </div>
 
     <hr class="garis">
@@ -128,12 +133,6 @@
       <div style="font-size: var(--fs-bawah);">Enjoy the TASTE</div>
     </div>
 
-    <hr class="garis">
-
-    <div class="kecil">
-      <div>Alamat : Jl. Terusan Ps. Cibeureum, Ciwidey, Kec. Ciwidey, Kabupaten Bandung, Jawa Barat 40973</div>
-      <div>Whatsapp : 081214785234</div>
-    </div>
   </div>
 </div>
 

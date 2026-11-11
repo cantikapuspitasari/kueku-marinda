@@ -8,12 +8,14 @@ use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Ongkir;
 use App\Support\Telepon;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class PesananController extends Controller
 {
-    // Ongkos kirim tetap untuk pesanan DELIVERY (dipakai juga oleh halaman keranjang, checkout, dan detail)
+    // Tidak dipakai lagi: ongkir kini dihitung dari jarak (lihat App\Support\Ongkir). Dibiarkan agar kode lama tidak error.
     const ONGKIR = 5000;
 
     // Pesanan diproses minimal sekian jam sebelum diambil/dikirim
@@ -55,7 +57,13 @@ class PesananController extends Controller
     // Simpan pesanan baru + detail item-nya sekaligus
     public function store(Request $request)
     {
+        // Permintaan hitung ongkir dari halaman checkout (belum membuat pesanan)
+        if ($request->input('mode') === 'hitung_ongkir') {
+            return $this->hitungOngkir($request);
+        }
+
         $validated = $request->validate([
+            'ongkir_token'       => 'nullable|string',
             'id_alamat'          => 'nullable|exists:alamat,id_alamat',
             'alamat_lengkap'     => 'nullable|string|max:500',
             'no_telepon'         => 'required|string|min:9|max:20',
@@ -90,6 +98,18 @@ class PesananController extends Controller
             return $this->gagal($request, 'Alamat wajib diisi untuk pesanan delivery');
         }
 
+        // Ongkir diambil dari hasil hitung jarak (token dari server), bukan angka dari browser
+        $ongkir = 0;
+        $titik = null;
+        if ($delivery) {
+            $tok = Ongkir::bacaToken($validated['ongkir_token'] ?? null);
+            if (!$tok) {
+                return $this->gagal($request, 'Tandai lokasi pengantaran di peta dulu agar ongkir bisa dihitung. Jika sudah lama, pilih ulang lokasinya.');
+            }
+            $ongkir = (int) $tok['ongkir'];
+            $titik = round($tok['lat'], 5) . ', ' . round($tok['lng'], 5);
+        }
+
         // Gabungkan item yang produknya sama supaya pengecekan stok akurat
         $gabung = [];
         foreach ($validated['items'] as $item) {
@@ -99,7 +119,7 @@ class PesananController extends Controller
 
         try {
             // Simpan pesanan + detail dalam satu transaction, biar kalau ada yang gagal, semua dibatalkan (rollback)
-            $pesanan = DB::transaction(function () use ($validated, $gabung, $delivery) {
+            $pesanan = DB::transaction(function () use ($validated, $gabung, $delivery, $ongkir, $titik) {
 
                 $user = Auth::user();
                 $totalHarga = 0;
@@ -151,9 +171,9 @@ class PesananController extends Controller
                     ];
                 }
 
-                // Pesanan diantar: tambahkan ongkir
+                // Pesanan diantar: tambahkan ongkir hasil hitung jarak
                 if ($delivery) {
-                    $totalHarga += self::ONGKIR;
+                    $totalHarga += $ongkir;
                 }
 
                 // Alamat: kalau pelanggan mengetik alamat baru, simpan ke tabel alamat.
@@ -163,7 +183,8 @@ class PesananController extends Controller
                     $idAlamat = DB::table('alamat')->insertGetId([
                         'id_pembeli'     => $idPembeli,
                         'label_alamat'   => 'Rumah',
-                        'alamat_lengkap' => $validated['alamat_lengkap'],
+                        // titik peta ikut dicatat supaya kurir mudah mencari lokasinya
+                        'alamat_lengkap' => Str::limit($validated['alamat_lengkap'], 200, '') . ' (Titik peta: ' . $titik . ')',
                         'kota'           => '-',
                         'kode_pos'       => '-',
                     ]);
@@ -219,6 +240,38 @@ class PesananController extends Controller
     }
 
     // Balasan error yang sesuai: JSON untuk checkout, redirect untuk form biasa
+    // Hitung jarak toko -> lokasi pelanggan lalu ongkirnya (dipanggil checkout setiap titik peta berubah)
+    private function hitungOngkir(Request $request)
+    {
+        $d = $request->validate([
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
+        ], [
+            'lat.required' => 'Lokasi belum dipilih di peta.',
+            'lng.required' => 'Lokasi belum dipilih di peta.',
+        ]);
+        $lat = (float) $d['lat'];
+        $lng = (float) $d['lng'];
+
+        if (!Ongkir::koordinatValid($lat, $lng)) {
+            return $this->gagal($request, 'Lokasi tidak valid. Pilih lokasi di wilayah Indonesia.');
+        }
+
+        [$km, $metode] = Ongkir::jarakKm($lat, $lng);
+        $ongkir = Ongkir::tarif($km);
+        if ($ongkir === null) {
+            return $this->gagal($request, 'Lokasi terlalu jauh (' . $km . ' km). Pengantaran maksimal ' . Ongkir::MAKS_KM . ' km dari toko. Silakan pilih "Ambil di toko".');
+        }
+
+        return response()->json([
+            'ok'        => true,
+            'jarak_km'  => $km,
+            'ongkir'    => $ongkir,
+            'metode'    => $metode,
+            'token'     => Ongkir::buatToken($lat, $lng, $km, $ongkir),
+        ]);
+    }
+
     private function gagal(Request $request, string $pesan)
     {
         if ($request->expectsJson()) {

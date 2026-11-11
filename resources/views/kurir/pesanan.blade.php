@@ -99,13 +99,12 @@
         <li class="flex flex-wrap items-center justify-between gap-3 py-4">
           <div class="flex items-start gap-3">
             <span class="w-8 h-8 rounded-full border {{ $sedangAntar || $selesai ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'border-stone-300 text-stone-500' }} flex items-center justify-center text-sm font-semibold shrink-0">{{ $sedangAntar || $selesai ? '✓' : '2' }}</span>
-            <div><h4 class="font-bold text-stone-900 text-sm">Antar Pesanan</h4><p class="text-xs text-stone-500">Update status jadi "di perjalanan" saat mulai mengantar.</p></div>
+            <div><h4 class="font-bold text-stone-900 text-sm">Antar Pesanan</h4><p class="text-xs text-stone-500">Admin menandai "di perjalanan" setelah Anda memberi kabar akan berangkat.</p></div>
           </div>
-          @if (!$sedangAntar && !$selesai)
-            <form method="POST" action="{{ route('pengiriman.mulaiAntar', $t->id_pesanan) }}">
-              @csrf @method('PATCH')
-              <button type="submit" class="px-5 py-2 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-xs font-semibold shadow-sm transition">Update Status: Di Perjalanan</button>
-            </form>
+          @if ($sedangAntar || $selesai)
+            <span class="text-xs font-semibold text-emerald-700">Sudah ditandai admin</span>
+          @else
+            <span class="text-xs text-stone-500 max-w-[14rem] text-right">Kabari admin bahwa Anda siap berangkat. Admin yang menandai "Kurir berangkat mengantar".</span>
           @endif
         </li>
 

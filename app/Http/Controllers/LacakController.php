@@ -21,8 +21,7 @@ class LacakController extends Controller
 
         // Pelanggan hanya boleh melihat pesanannya sendiri (dicocokkan lewat email akun)
         if ($user->role === 'PEMBELI') {
-            $idPembeli = DB::table('pembeli')->where('email', $user->email)->value('id_pembeli');
-            if ($idPembeli != $p->id_pembeli) {
+            if (!in_array($p->id_pembeli, \App\Support\PembeliAkun::ids($user))) {
                 return response()->json(['message' => 'Bukan pesanan Anda'], 403);
             }
         }
@@ -38,8 +37,13 @@ class LacakController extends Controller
         $cart = DB::table('detail_pesanan')->where('id_pesanan', $p->id_pesanan)
             ->pluck('jumlah', 'id_produk');
 
+        // Ongkir = total pesanan - jumlah harga item (dihitung saat pesanan dibuat)
+        $subtotal = (float) DB::table('detail_pesanan')->where('id_pesanan', $p->id_pesanan)->sum('subtotal');
+        $ongkir = max(0, (int) round($p->total_harga - $subtotal));
+
         return response()->json([
             'cart'   => $cart,
+            'ongkir' => $ongkir,
             'kode'   => $p->kode_pesanan,
             'mode'   => $p->jenis_pengambilan === 'PICKUP' ? 'toko' : 'kurir',
             'state'  => $hasil['state'],   // ok | menunggu | batal

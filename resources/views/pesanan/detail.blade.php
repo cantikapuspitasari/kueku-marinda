@@ -197,7 +197,6 @@
 /* ---------- Data produk (id sama dengan data-id di beranda) ---------- */
 const PRODUCTS = @json($produkJs);
 
-const ONGKIR = {{ \App\Http\Controllers\PesananController::ONGKIR }};
 const rp = n => "Rp " + n.toLocaleString("id-ID");
 
 /* Pesanan terakhir (disimpan oleh halaman checkout) */
@@ -299,7 +298,7 @@ function renderOrder() {
   const shipEl = document.getElementById("sum-ship");
   let ship = 0;
   if (mode === "kurir") {
-    ship = count ? ONGKIR : 0;
+    ship = order && order.ongkir != null ? Number(order.ongkir) : 0;
     document.getElementById("ship-label").textContent = "Ongkos Kirim";
     shipEl.textContent = rp(ship);
     shipEl.className = "font-semibold text-neutral-900";
@@ -338,7 +337,7 @@ async function muatStatus() {
     if (!res.ok) return;
     const data = await res.json();
     mode = data.mode === "toko" ? "toko" : "kurir";
-    order = { no: "#" + data.kode, cart: data.cart || {}, mode: mode };
+    order = { no: "#" + data.kode, cart: data.cart || {}, mode: mode, ongkir: data.ongkir };
     STATE = data.state;
     CURRENT = data.tahap;
     renderTimeline();

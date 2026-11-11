@@ -33,20 +33,12 @@ class PengirimanController extends Controller
         return back()->with('success', 'Pesanan ditandai sudah diambil dari toko.');
     }
 
-    // Langkah 2: Antar Pesanan -> status "Di Perjalanan"
+    // Langkah 2: "Berangkat mengantar" kini HANYA ditandai oleh admin (Admin > Pesanan > Kurir berangkat mengantar).
+    // Kurir cukup mengabari admin; route ini dibiarkan supaya link lama tidak error.
     public function mulaiAntar($idPesanan)
     {
-        $pg = $this->milikSaya($idPesanan);
-        if ($pg->status_pengiriman === 'TERKIRIM') {
-            return back()->with('error', 'Pesanan ini sudah selesai.');
-        }
-
-        DB::table('pengiriman')->where('id_pesanan', $idPesanan)->update([
-            'status_pengiriman' => 'DIANTAR',
-            'waktu_diambil'     => $pg->waktu_diambil ?: now()->toDateString(),
-        ]);
-
-        return back()->with('success', 'Status diperbarui: Di Perjalanan.');
+        $this->milikSaya($idPesanan);
+        return back()->with('error', 'Status "Di Perjalanan" ditandai oleh admin. Kabari admin bahwa Anda siap berangkat.');
     }
 
     // Langkah 3: Serahkan pesanan & terima pembayaran cash -> "Selesai"

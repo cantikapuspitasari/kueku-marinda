@@ -91,15 +91,7 @@
             <span>Subtotal <span class="text-xs text-[#696464]/80 font-medium">(<span id="sum-count">0</span> item)</span></span>
             <span class="font-semibold text-[#2D2828]" id="sum-sub">Rp 0</span>
           </div>
-          <div class="flex justify-between items-center text-[#696464]">
-            <span class="flex items-center gap-1.5">
-              Ongkos kirim
-              <span class="inline-block" title="Dihitung berdasarkan lokasi pengantaran">
-                <svg class="w-3.5 h-3.5 text-[#696464]/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M12 16v-4m0-4h.01" stroke-width="2"></path></svg>
-              </span>
-            </span>
-            <span class="font-semibold text-[#2D2828]" id="sum-ship">Rp 0</span>
-          </div>
+          <p class="text-xs text-[#696464]/80 leading-relaxed">Ongkos kirim dihitung di halaman checkout sesuai lokasi pengantaran. Ambil di toko gratis.</p>
         </div>
 
         <div class="border-t border-[#993A3C]/15 pt-4 mb-6">
@@ -136,7 +128,6 @@ const PRODUCTS = @json($produkJs);
 
 /* ---------- Keranjang ---------- */
 const CART_KEY = "kueku_cart";
-const ONGKIR = {{ \App\Http\Controllers\PesananController::ONGKIR }};
 const rp = n => "Rp " + n.toLocaleString("id-ID");
 
 function getCart() { try { return JSON.parse(localStorage.getItem(CART_KEY)) || {}; } catch (e) { return {}; } }
@@ -179,11 +170,9 @@ function renderCart() {
 
   list.innerHTML = html;
 
-  const ship = count ? ONGKIR : 0;
   document.getElementById("sum-count").textContent = count;
   document.getElementById("sum-sub").textContent = rp(sub);
-  document.getElementById("sum-ship").textContent = rp(ship);
-  document.getElementById("sum-total").textContent = rp(sub + ship);
+  document.getElementById("sum-total").textContent = rp(sub);
   document.getElementById("cart-badge-count").textContent = count;
 }
 
