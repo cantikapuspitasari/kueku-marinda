@@ -23,41 +23,21 @@ class User extends Authenticatable
         'password',
     ];
 
-    // Tabel kita nggak punya kolom remember_token, jadi fitur "remember me" dimatikan
-    public function getRememberToken()
-    {
-        return null;
-    }
-
-    public function setRememberToken($value)
-    {
-        // sengaja dikosongkan
-    }
-
-    public function getRememberTokenName()
-    {
-        return '';
-    }
+    public function getRememberToken() { return null; }
+    public function setRememberToken($value) {}
+    public function getRememberTokenName() { return ''; }
 
     // ---------- Relasi ----------
-
-    public function alamat()
-    {
-        return $this->hasMany(Alamat::class, 'id_user', 'id_user');
-    }
-
-    public function pesanan()
-    {
-        return $this->hasMany(Pesanan::class, 'id_user', 'id_user');
-    }
+    // Catatan: User (staf) tidak lagi punya relasi ke Alamat/Pesanan,
+    // karena itu sekarang milik Pembeli.
 
     public function pembayaranDiterima()
     {
-        return $this->hasMany(Pembayaran::class, 'id_penerima', 'id_user');
+        return $this->hasMany(Pembayaran::class, 'id_user', 'id_user');
     }
 
     public function pengiriman()
     {
-        return $this->hasMany(Pengiriman::class, 'id_kurir', 'id_user');
+        return $this->hasMany(Pengiriman::class, 'id_user', 'id_user');
     }
 }

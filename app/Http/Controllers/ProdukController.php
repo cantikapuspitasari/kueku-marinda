@@ -29,11 +29,15 @@ class ProdukController extends Controller
     // Menampilkan semua produk (beranda pelanggan)
     public function index()
     {
+<<<<<<< HEAD
         $produk = Produk::with('kategori')
             ->where('status_produk', '!=', 'NONAKTIF')
             ->orderBy('id_kategori')
             ->orderBy('id_produk')
             ->get();
+=======
+        $produk = Produk::with('kategori')->get();
+>>>>>>> origin/feature/backend
 
         return view('produk.index', compact('produk'));
     }
@@ -42,6 +46,7 @@ class ProdukController extends Controller
     public function create()
     {
         $kategori = Kategori::all();
+
         return view('produk.create', compact('kategori'));
     }
 
@@ -58,15 +63,29 @@ class ProdukController extends Controller
             'foto_produk'   => 'nullable|string|max:255',
         ]);
 
+        // Jika stok 0, produk tidak boleh berstatus TERSEDIA
+        if (
+            $validated['status_produk'] === 'TERSEDIA' &&
+            (int) $validated['stok'] === 0
+        ) {
+            $validated['status_produk'] = 'STOK_HABIS';
+        }
+
         Produk::create($validated);
 
-        return redirect()->route('produk.index')->with('success', 'Produk berhasil ditambahkan');
+        return redirect()
+            ->route('produk.index')
+            ->with(
+                'success',
+                'Produk berhasil ditambahkan'
+            );
     }
 
     // Detail 1 produk
     public function show($id)
     {
         $produk = Produk::with('kategori')->findOrFail($id);
+
         return view('produk.show', compact('produk'));
     }
 
@@ -75,6 +94,7 @@ class ProdukController extends Controller
     {
         $produk = Produk::findOrFail($id);
         $kategori = Kategori::all();
+
         return view('produk.edit', compact('produk', 'kategori'));
     }
 
@@ -93,17 +113,56 @@ class ProdukController extends Controller
             'foto_produk'   => 'nullable|string|max:255',
         ]);
 
+        // Jika stok 0, produk tidak boleh berstatus TERSEDIA
+        if (
+            $validated['status_produk'] === 'TERSEDIA' &&
+            (int) $validated['stok'] === 0
+        ) {
+            $validated['status_produk'] = 'STOK_HABIS';
+        }
+
         $produk->update($validated);
 
-        return redirect()->route('produk.index')->with('success', 'Produk berhasil diperbarui');
+        return redirect()
+            ->route('produk.index')
+            ->with(
+                'success',
+                'Produk berhasil diperbarui'
+            );
     }
 
     // Hapus produk
+    // Produk yang pernah dipesan tidak benar-benar dihapus
+    // supaya riwayat pesanan dan laporan tetap aman.
     public function destroy($id)
     {
         $produk = Produk::findOrFail($id);
+
+        // Jika produk pernah masuk pesanan,
+        // cukup dinonaktifkan.
+        if ($produk->detailPesanan()->exists()) {
+
+            $produk->update([
+                'status_produk' => 'NONAKTIF'
+            ]);
+
+            return redirect()
+                ->route('produk.index')
+                ->with(
+                    'success',
+                    'Produk sudah pernah dipesan, jadi dinonaktifkan (tidak dihapus).'
+                );
+        }
+
+        // Jika belum pernah dipesan,
+        // produk boleh dihapus.
         $produk->delete();
 
-        return redirect()->route('produk.index')->with('success', 'Produk berhasil dihapus');
+        return redirect()
+            ->route('produk.index')
+            ->with(
+                'success',
+                'Produk berhasil dihapus'
+            );
     }
 }

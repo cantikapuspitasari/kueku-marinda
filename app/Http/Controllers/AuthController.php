@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
+<<<<<<< HEAD
 use App\Models\User;
 use App\Support\Telepon;
+=======
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
+>>>>>>> origin/feature/backend
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+<<<<<<< HEAD
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -15,17 +21,63 @@ class AuthController extends Controller
     // Peran yang boleh masuk lewat tiap portal
     private const PERAN_PELANGGAN = ['PEMBELI'];
     private const PERAN_STAFF     = ['ADMIN', 'OWNER', 'KURIR'];
+=======
+use App\Models\User;
+use App\Models\Pembeli;
+
+class AuthController extends Controller
+{
+    // ================= PEMBELI (guard: pembeli) =================
+>>>>>>> origin/feature/backend
 
     public function showLogin()
     {
         return view('auth.login');
     }
 
+<<<<<<< HEAD
+=======
+    public function login(LoginRequest $request)
+    {
+        $credentials = $request->validated();
+
+        // Status AKTIF menjadi syarat login.
+        // Akun NONAKTIF tidak akan dibuatkan sesi.
+        if (Auth::guard('pembeli')->attempt($credentials + ['status_akun' => 'AKTIF'])) {
+            $request->session()->regenerate();
+
+            return redirect()->intended('/');
+        }
+
+        // Beritahu "dinonaktifkan" hanya kalau password benar.
+        $akun = Pembeli::where('email', $credentials['email'])->first();
+
+        if (
+            $akun &&
+            $akun->status_akun === 'NONAKTIF' &&
+            Hash::check($credentials['password'], $akun->password)
+        ) {
+            return back()
+                ->withErrors([
+                    'email' => 'Akun Anda telah dinonaktifkan'
+                ])
+                ->onlyInput('email');
+        }
+
+        return back()
+            ->withErrors([
+                'email' => 'Email atau password salah'
+            ])
+            ->onlyInput('email');
+    }
+
+>>>>>>> origin/feature/backend
     public function showRegister()
     {
         return view('auth.register');
     }
 
+<<<<<<< HEAD
     // ---------------------------------------------------------------
     // LOGIN (dipakai bersama oleh Portal Pelanggan dan Portal Pengelola)
     // Field tersembunyi "portal" menentukan pintu mana yang dipakai.
@@ -117,10 +169,29 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         return redirect('/produk')->with('success', 'Pendaftaran berhasil. Selamat datang!');
+=======
+    public function register(RegisterRequest $request)
+    {
+        $validated = $request->validated();
+
+        $pembeli = Pembeli::create([
+            'nama'        => $validated['nama'],
+            'email'       => $validated['email'],
+            'password'    => Hash::make($validated['password']),
+            'no_telepon'  => $validated['no_telepon'],
+            'status_akun' => 'AKTIF',
+        ]);
+
+        Auth::guard('pembeli')->login($pembeli);
+
+        return redirect('/')
+            ->with('success', 'Registrasi berhasil, selamat datang!');
+>>>>>>> origin/feature/backend
     }
 
     public function logout(Request $request)
     {
+<<<<<<< HEAD
         $this->keluar($request);
         return redirect()->route('home');
     }
@@ -129,10 +200,15 @@ class AuthController extends Controller
     private function keluar(Request $request): void
     {
         Auth::logout();
+=======
+        Auth::guard('pembeli')->logout();
+
+>>>>>>> origin/feature/backend
         $request->session()->invalidate();
         $request->session()->regenerateToken();
     }
 
+<<<<<<< HEAD
     private function pastikanPembeli($user): void
     {
         $ada = DB::table('pembeli')->where('email', $user->email)->exists();
@@ -146,3 +222,57 @@ class AuthController extends Controller
         }
     }
 }
+=======
+
+    // ================= STAF: Admin/Owner/Kurir (guard: web) =================
+
+    public function showLoginStaff()
+    {
+        return view('auth.login-staff');
+    }
+
+    public function loginStaff(LoginRequest $request)
+    {
+        $credentials = $request->validated();
+
+        // Status AKTIF menjadi syarat login.
+        // Akun NONAKTIF tidak akan dibuatkan sesi.
+        if (Auth::guard('web')->attempt($credentials + ['status_akun' => 'AKTIF'])) {
+            $request->session()->regenerate();
+
+            return redirect()->intended('/');
+        }
+
+        // Beritahu "dinonaktifkan" hanya kalau password benar.
+        $akun = User::where('email', $credentials['email'])->first();
+
+        if (
+            $akun &&
+            $akun->status_akun === 'NONAKTIF' &&
+            Hash::check($credentials['password'], $akun->password)
+        ) {
+            return back()
+                ->withErrors([
+                    'email' => 'Akun Anda telah dinonaktifkan'
+                ])
+                ->onlyInput('email');
+        }
+
+        return back()
+            ->withErrors([
+                'email' => 'Email atau password salah'
+            ])
+            ->onlyInput('email');
+    }
+
+    public function logoutStaff(Request $request)
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/staff/login');
+    }
+}
+>>>>>>> origin/feature/backend

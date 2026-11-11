@@ -34,7 +34,7 @@ Route::get('/', function () {
 
 Route::get('healthcheck', [HealthCheckController::class, 'index'])->name('healthcheck');
 
-// ---------- Auth (bebas diakses siapa saja) ----------
+// ---------- Auth Pembeli (publik) ----------
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::get('login-staff', function () {
     return view('auth.login-staff');
@@ -44,6 +44,7 @@ Route::get('register', [AuthController::class, 'showRegister'])->name('register'
 Route::post('register', [AuthController::class, 'register']);
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
+<<<<<<< HEAD
 // Login dengan Google
 Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
 Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
@@ -63,9 +64,24 @@ Route::get('favorit', function () {
 
 Route::get('produk', [ProdukController::class, 'index'])->name('produk.index');
 Route::get('produk/{id}', [ProdukController::class, 'show'])->name('produk.show');
-Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
-Route::get('kategori/{kategori}', [KategoriController::class, 'show'])->name('kategori.show');
+=======
+// ---------- Auth Staf (Admin/Owner/Kurir) ----------
+Route::get('staff/login', [AuthController::class, 'showLoginStaff'])->name('staff.login');
+Route::post('staff/login', [AuthController::class, 'loginStaff']);
+Route::post('staff/logout', [AuthController::class, 'logoutStaff'])->name('staff.logout');
 
+
+// ---------- Produk & Kategori: boleh dilihat siapa saja ----------
+Route::get('produk', [ProdukController::class, 'index'])->name('produk.index');
+
+Route::get('produk/{produk}', [ProdukController::class, 'show'])
+    ->whereNumber('produk')
+    ->name('produk.show');
+
+>>>>>>> origin/feature/backend
+Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
+
+<<<<<<< HEAD
 // ---------- Keranjang & Checkout ----------
 Route::get('keranjang', [KeranjangController::class, 'index'])->name('keranjang.index');
 Route::get('checkout', [CheckoutController::class, 'index'])->name('checkout.index');
@@ -100,10 +116,29 @@ Route::middleware('auth')->group(function () {
     Route::resource('pesanan', PesananController::class)->except(['edit', 'update', 'destroy']);
     Route::get('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'show'])->name('pembayaran.show');
     Route::get('pesanan/{idPesanan}/struk', [StrukController::class, 'show'])->name('pesanan.struk');
+=======
+Route::get('kategori/{kategori}', [KategoriController::class, 'show'])
+    ->whereNumber('kategori')
+    ->name('kategori.show');
+
+
+// ---------- Khusus Pembeli ----------
+Route::middleware('auth:pembeli')->group(function () {
+
+    Route::resource('pesanan', PesananController::class)
+        ->except(['edit', 'update', 'destroy']);
+
+    Route::get(
+        'pesanan/{idPesanan}/pembayaran',
+        [PembayaranController::class, 'show']
+    )->name('pembayaran.show');
+>>>>>>> origin/feature/backend
 });
 
-// ---------- Khusus Admin: kelola produk & kategori, verifikasi pesanan ----------
+
+// ---------- Khusus Admin ----------
 Route::middleware(['auth', 'role:ADMIN'])->group(function () {
+<<<<<<< HEAD
     Route::post('produk', [ProdukController::class, 'store'])->name('produk.store');
     Route::put('produk/{produk}', [ProdukController::class, 'update'])->name('produk.update');
     Route::delete('produk/{produk}', [ProdukController::class, 'destroy'])->name('produk.destroy');
@@ -135,13 +170,74 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
     Route::put('kategori/{kategori}', [KategoriController::class, 'update'])->name('kategori.update');
     Route::delete('kategori/{kategori}', [KategoriController::class, 'destroy'])->name('kategori.destroy');
     Route::get('kategori/{kategori}/edit', [KategoriController::class, 'edit'])->name('kategori.edit');
+=======
 
-    Route::patch('pesanan/{id}/status', [PesananController::class, 'updateStatus'])->name('pesanan.updateStatus');
-    Route::post('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'store'])->name('pembayaran.store');
+    // Produk
+    Route::post('produk', [ProdukController::class, 'store'])
+        ->name('produk.store');
+>>>>>>> origin/feature/backend
+
+    Route::get('produk/create', [ProdukController::class, 'create'])
+        ->name('produk.create');
+
+    Route::put('produk/{produk}', [ProdukController::class, 'update'])
+        ->name('produk.update');
+
+    Route::delete('produk/{produk}', [ProdukController::class, 'destroy'])
+        ->name('produk.destroy');
+
+    Route::get('produk/{produk}/edit', [ProdukController::class, 'edit'])
+        ->name('produk.edit');
+
+
+    // Kategori
+    Route::post('kategori', [KategoriController::class, 'store'])
+        ->name('kategori.store');
+
+    Route::get('kategori/create', [KategoriController::class, 'create'])
+        ->name('kategori.create');
+
+    Route::put('kategori/{kategori}', [KategoriController::class, 'update'])
+        ->name('kategori.update');
+
+    Route::delete('kategori/{kategori}', [KategoriController::class, 'destroy'])
+        ->name('kategori.destroy');
+
+    Route::get('kategori/{kategori}/edit', [KategoriController::class, 'edit'])
+        ->name('kategori.edit');
+
+
+    // Verifikasi pesanan
+    Route::patch(
+        'pesanan/{id}/status',
+        [PesananController::class, 'updateStatus']
+    )->name('pesanan.updateStatus');
 });
 
-// ---------- Khusus Kurir: pengiriman ----------
+
+// ---------- Pembayaran: Admin & Kurir ----------
+Route::middleware(['auth', 'role:ADMIN,KURIR'])->group(function () {
+
+    Route::post(
+        'pesanan/{idPesanan}/pembayaran',
+        [PembayaranController::class, 'store']
+    )->name('pembayaran.store');
+});
+
+
+// ---------- Admin & Owner ----------
+Route::middleware(['auth', 'role:ADMIN,OWNER'])->group(function () {
+
+    Route::get(
+        'admin/pesanan',
+        [PesananController::class, 'indexStaff']
+    )->name('pesanan.indexStaff');
+});
+
+
+// ---------- Khusus Kurir ----------
 Route::middleware(['auth', 'role:KURIR'])->group(function () {
+<<<<<<< HEAD
     // Alamat lama /pengiriman diarahkan ke dashboard kurir
     Route::redirect('pengiriman', '/kurir/dashboard')->name('pengiriman.index');
     Route::get('kurir/dashboard', [KurirController::class, 'dashboard'])->name('kurir.dashboard');
@@ -171,3 +267,56 @@ Route::middleware(['auth', 'role:OWNER'])->group(function () {
     Route::redirect('user', '/owner/akun')->name('user.index');
     Route::redirect('laporan', '/owner/laporan')->name('laporan.index');
 });
+=======
+
+    Route::get(
+        'pengiriman',
+        [PengirimanController::class, 'index']
+    )->name('pengiriman.index');
+
+    Route::patch(
+        'pesanan/{idPesanan}/ambil-toko',
+        [PengirimanController::class, 'ambilDariToko']
+    )->name('pengiriman.ambilDariToko');
+
+    Route::patch(
+        'pesanan/{idPesanan}/terkirim',
+        [PengirimanController::class, 'tandaiTerkirim']
+    )->name('pengiriman.tandaiTerkirim');
+});
+
+
+// ---------- Khusus Owner ----------
+Route::middleware(['auth', 'role:OWNER'])->group(function () {
+
+    Route::get(
+        'user',
+        [UserController::class, 'index']
+    )->name('user.index');
+
+    Route::get(
+        'user/create',
+        [UserController::class, 'create']
+    )->name('user.create');
+
+    Route::post(
+        'user',
+        [UserController::class, 'store']
+    )->name('user.store');
+
+    Route::patch(
+        'user/{id}/nonaktifkan',
+        [UserController::class, 'nonaktifkan']
+    )->name('user.nonaktifkan');
+
+    Route::patch(
+        'user/{id}/aktifkan',
+        [UserController::class, 'aktifkan']
+    )->name('user.aktifkan');
+
+    Route::get(
+        'laporan',
+        [LaporanController::class, 'index']
+    )->name('laporan.index');
+});
+>>>>>>> origin/feature/backend

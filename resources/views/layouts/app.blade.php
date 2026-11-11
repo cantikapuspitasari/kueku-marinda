@@ -271,4 +271,8 @@
     @stack('scripts')
 
 </body>
+<<<<<<< HEAD
 </html>
+=======
+</html>
+>>>>>>> origin/feature/backend

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -191,3 +192,15 @@
 
 
 <div id="snapdom-sandbox" data-snapdom-sandbox="true" aria-hidden="true" style="position: absolute; left: -9999px; top: -9999px; width: 0px; height: 0px; overflow: hidden;"></div></body></html>
+=======
+@extends('layouts.app')
+
+@section('title', 'Beranda')
+
+@section('content')
+    <div class="text-center py-5">
+        <h1 class="fw-bold">Kue Ku Marinda</h1>
+        <p class="text-muted">Sistem Bakery Pre-Order</p>
+    </div>
+@endsection
+>>>>>>> origin/feature/backend
