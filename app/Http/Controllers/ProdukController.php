@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 class ProdukController extends Controller
 {
     // Data katalog untuk JavaScript (keranjang, checkout, detail pesanan).
-    // Kunci = id_produk, jadi semua halaman memakai data yang sama dari database.
     public static function katalogJs(): array
     {
         return Produk::with('kategori')->get()->mapWithKeys(function ($p) {
@@ -29,15 +28,11 @@ class ProdukController extends Controller
     // Menampilkan semua produk (beranda pelanggan)
     public function index()
     {
-<<<<<<< HEAD
         $produk = Produk::with('kategori')
             ->where('status_produk', '!=', 'NONAKTIF')
             ->orderBy('id_kategori')
             ->orderBy('id_produk')
             ->get();
-=======
-        $produk = Produk::with('kategori')->get();
->>>>>>> origin/feature/backend
 
         return view('produk.index', compact('produk'));
     }
@@ -63,7 +58,6 @@ class ProdukController extends Controller
             'foto_produk'   => 'nullable|string|max:255',
         ]);
 
-        // Jika stok 0, produk tidak boleh berstatus TERSEDIA
         if (
             $validated['status_produk'] === 'TERSEDIA' &&
             (int) $validated['stok'] === 0
@@ -75,10 +69,7 @@ class ProdukController extends Controller
 
         return redirect()
             ->route('produk.index')
-            ->with(
-                'success',
-                'Produk berhasil ditambahkan'
-            );
+            ->with('success', 'Produk berhasil ditambahkan');
     }
 
     // Detail 1 produk
@@ -113,7 +104,6 @@ class ProdukController extends Controller
             'foto_produk'   => 'nullable|string|max:255',
         ]);
 
-        // Jika stok 0, produk tidak boleh berstatus TERSEDIA
         if (
             $validated['status_produk'] === 'TERSEDIA' &&
             (int) $validated['stok'] === 0
@@ -125,44 +115,28 @@ class ProdukController extends Controller
 
         return redirect()
             ->route('produk.index')
-            ->with(
-                'success',
-                'Produk berhasil diperbarui'
-            );
+            ->with('success', 'Produk berhasil diperbarui');
     }
 
     // Hapus produk
-    // Produk yang pernah dipesan tidak benar-benar dihapus
-    // supaya riwayat pesanan dan laporan tetap aman.
     public function destroy($id)
     {
         $produk = Produk::findOrFail($id);
 
-        // Jika produk pernah masuk pesanan,
-        // cukup dinonaktifkan.
         if ($produk->detailPesanan()->exists()) {
-
             $produk->update([
                 'status_produk' => 'NONAKTIF'
             ]);
 
             return redirect()
                 ->route('produk.index')
-                ->with(
-                    'success',
-                    'Produk sudah pernah dipesan, jadi dinonaktifkan (tidak dihapus).'
-                );
+                ->with('success', 'Produk sudah pernah dipesan, jadi dinonaktifkan (tidak dihapus).');
         }
 
-        // Jika belum pernah dipesan,
-        // produk boleh dihapus.
         $produk->delete();
 
         return redirect()
             ->route('produk.index')
-            ->with(
-                'success',
-                'Produk berhasil dihapus'
-            );
+            ->with('success', 'Produk berhasil dihapus');
     }
 }

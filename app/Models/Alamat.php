@@ -17,18 +17,22 @@ class Alamat extends Model
         'kota',
         'kode_pos',
     ];
-<<<<<<< HEAD
-}
-=======
 
     public function pembeli()
     {
-        return $this->belongsTo(Pembeli::class, 'id_pembeli', 'id_pembeli');
+        return $this->belongsTo(
+            Pembeli::class,
+            'id_pembeli',
+            'id_pembeli'
+        );
     }
 
     public function pesanan()
     {
-        return $this->hasMany(Pesanan::class, 'id_alamat', 'id_alamat');
+        return $this->hasMany(
+            Pesanan::class,
+            'id_alamat',
+            'id_alamat'
+        );
     }
 }
->>>>>>> origin/feature/backend

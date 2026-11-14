@@ -2,74 +2,78 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Pembeli;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class GoogleController extends Controller
 {
-    // Klik tombol Google -> lempar ke halaman login Google
+    // Mengarahkan pengguna ke halaman login Google
     public function redirect()
     {
         return Socialite::driver('google')->redirect();
     }
 
-    // Google mengembalikan pengguna ke sini
+    // Menangani callback dari Google
     public function callback()
     {
         try {
-            $g = Socialite::driver('google')->user();
+            $googleUser = Socialite::driver('google')->user();
         } catch (\Throwable $e) {
             return redirect()->route('login')
-                ->withErrors(['email' => 'Masuk dengan Google gagal. Silakan coba lagi.']);
+                ->withErrors([
+                    'email' => 'Masuk dengan Google gagal. Silakan coba lagi.'
+                ]);
         }
 
-        $email = $g->getEmail();
+        $email = $googleUser->getEmail();
+
         if (!$email) {
             return redirect()->route('login')
-                ->withErrors(['email' => 'Akun Google tidak menyediakan email.']);
+                ->withErrors([
+                    'email' => 'Akun Google tidak menyediakan email.'
+                ]);
         }
 
-        $user = User::where('email', $email)->first();
+        // Cegah akun staff masuk melalui portal pelanggan
+        $staff = User::where('email', $email)->first();
 
-        if ($user) {
-            // Email ini milik pengelola -> tidak boleh lewat portal pelanggan
-            if ($user->role !== 'PEMBELI') {
-                return redirect()->route('login')->withErrors([
-                    'email' => 'Anda tidak memiliki akses ke halaman ini. Akun pengelola silakan masuk lewat halaman Masuk Pengelola.',
+        if ($staff) {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Akun pengelola silakan masuk melalui halaman Masuk Pengelola.'
                 ]);
-            }
-            if (($user->status_akun ?? 'AKTIF') === 'NONAKTIF') {
-                return redirect()->route('login')
-                    ->withErrors(['email' => 'Akun Anda dinonaktifkan. Hubungi pemilik toko.']);
-            }
-        } else {
-            // Pengguna baru: daftar otomatis sebagai PEMBELI (tersimpan di database)
-            $user = (new User())->forceFill([
-                'nama'        => $g->getName() ?: Str::before($email, '@'),
-                'email'       => $email,
-                'password'    => Hash::make(Str::random(40)), // acak: login hanya lewat Google
-                'no_telepon'  => '',
-                'role'        => 'PEMBELI',
+        }
+
+        // Cari akun pelanggan berdasarkan email Google
+        $pembeli = Pembeli::where('email', $email)->first();
+
+        // Jika belum ada, buat akun pelanggan baru
+        if (!$pembeli) {
+            $pembeli = Pembeli::create([
+                'nama' => $googleUser->getName()
+                    ?: Str::before($email, '@'),
+                'email' => $email,
+                'password' => Hash::make(Str::random(40)),
+                'no_telepon' => '',
                 'status_akun' => 'AKTIF',
             ]);
-            $user->save();
         }
 
-        // Pastikan ada baris di tabel pembeli (dipakai saat checkout)
-        if (!DB::table('pembeli')->where('email', $user->email)->exists()) {
-            DB::table('pembeli')->insert([
-                'nama'       => $user->nama,
-                'email'      => $user->email,
-                'password'   => $user->password,
-                'no_telepon' => $user->no_telepon ?? '',
-            ]);
+        // Periksa status akun pelanggan
+        if (($pembeli->status_akun ?? 'AKTIF') === 'NONAKTIF') {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Akun Anda dinonaktifkan. Hubungi pemilik toko.'
+                ]);
         }
 
-        Auth::login($user, true);
+        // Login menggunakan guard pelanggan
+        Auth::guard('pembeli')->login($pembeli);
+
         request()->session()->regenerate();
 
         return redirect()->intended('/produk');

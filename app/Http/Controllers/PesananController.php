@@ -2,40 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pesanan;
+use App\Http\Requests\StorePesananRequest;
 use App\Models\DetailPesanan;
+use App\Models\Pesanan;
 use App\Models\Produk;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-<<<<<<< HEAD
 use App\Support\Ongkir;
 use App\Support\Telepon;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PesananController extends Controller
 {
-    // Tidak dipakai lagi: ongkir kini dihitung dari jarak (lihat App\Support\Ongkir). Dibiarkan agar kode lama tidak error.
     const ONGKIR = 5000;
-
-    // Pesanan diproses minimal sekian jam sebelum diambil/dikirim
     const MIN_JAM_PROSES = 3;
 
-    // Jam operasional (WIB): [buka, tutup). Slot terakhir = 30 menit sebelum tutup.
     const JAM_OPERASIONAL = [
-        'PICKUP'   => ['08:00', '15:00'],
+        'PICKUP' => ['08:00', '15:00'],
         'DELIVERY' => ['09:00', '18:00'],
     ];
 
-    // Menampilkan daftar pesanan (beda isi tergantung role: pembeli lihat punya sendiri, admin lihat semua)
-=======
-use App\Http\Requests\StorePesananRequest;
-
-class PesananController extends Controller
-{
-    // Menampilkan daftar pesanan milik pembeli yang sedang login
->>>>>>> origin/feature/backend
+    // Daftar pesanan milik pembeli yang sedang login
     public function index()
     {
         $pembeli = Auth::guard('pembeli')->user();
@@ -56,342 +45,238 @@ class PesananController extends Controller
         return view('pesanan.create', compact('produk'));
     }
 
-    // Simpan pesanan baru + detail item-nya sekaligus
-    // S2-05: validasi input sudah dipindahkan ke StorePesananRequest
+    // Simpan pesanan baru
     public function store(StorePesananRequest $request)
     {
-<<<<<<< HEAD
-        // Permintaan hitung ongkir dari halaman checkout (belum membuat pesanan)
+        // Hitung ongkir tanpa membuat pesanan
         if ($request->input('mode') === 'hitung_ongkir') {
             return $this->hitungOngkir($request);
         }
 
-        $validated = $request->validate([
-            'ongkir_token'       => 'nullable|string',
-            'id_alamat'          => 'nullable|exists:alamat,id_alamat',
-            'alamat_lengkap'     => 'nullable|string|max:500',
-            'no_telepon'         => 'required|string|min:9|max:20',
-            'tanggal_ambil'      => 'required|date_format:Y-m-d',
-            'jam_ambil'          => 'required|date_format:H:i',
-            'jenis_pengambilan'  => 'required|in:PICKUP,DELIVERY',
-            'items'              => 'required|array|min:1',
-            'items.*.id_produk'  => 'required|exists:produk,id_produk',
-            'items.*.jumlah'     => 'required|integer|min:1',
-        ]);
+        $validated = $request->validated();
 
-        $validated['no_telepon'] = Telepon::normalisasi($validated['no_telepon']);
+        $validated['no_telepon'] = Telepon::normalisasi(
+            $validated['no_telepon']
+        );
+
         $delivery = $validated['jenis_pengambilan'] === 'DELIVERY';
 
-        // ---- Aturan waktu: minimal 3 jam sebelum diambil/dikirim (zona waktu WIB) ----
-        [$buka, $tutup] = self::JAM_OPERASIONAL[$validated['jenis_pengambilan']];
-        if ($validated['jam_ambil'] < $buka || $validated['jam_ambil'] >= $tutup) {
-            return $this->gagal($request, "Jam di luar jam operasional ($buka - $tutup WIB).");
+        // Validasi jam operasional
+        [$buka, $tutup] = self::JAM_OPERASIONAL[
+            $validated['jenis_pengambilan']
+        ];
+
+        if (
+            $validated['jam_ambil'] < $buka ||
+            $validated['jam_ambil'] >= $tutup
+        ) {
+            return $this->gagal(
+                $request,
+                "Jam di luar jam operasional ($buka - $tutup WIB)."
+            );
         }
+
+        // Validasi minimal 3 jam sebelum pengambilan
         $wib = 'Asia/Jakarta';
-        $waktuPilihan = Carbon::createFromFormat('Y-m-d H:i', $validated['tanggal_ambil'] . ' ' . $validated['jam_ambil'], $wib);
+
+        $waktuPilihan = Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $validated['tanggal_ambil'] . ' ' . $validated['jam_ambil'],
+            $wib
+        );
+
         $minimal = Carbon::now($wib)->addHours(self::MIN_JAM_PROSES);
+
         if ($waktuPilihan->lt($minimal)) {
-            return $this->gagal($request, 'Pesanan diproses minimal ' . self::MIN_JAM_PROSES . ' jam sebelum diambil/dikirim. Waktu paling cepat: ' . $minimal->format('d-m-Y H:i') . ' WIB.');
-        }
-        if ($waktuPilihan->gt(Carbon::now($wib)->addDays(7)->endOfDay())) {
-            return $this->gagal($request, 'Pesanan hanya bisa dijadwalkan sampai 7 hari ke depan.');
+            return $this->gagal(
+                $request,
+                'Pesanan diproses minimal ' .
+                self::MIN_JAM_PROSES .
+                ' jam sebelum diambil/dikirim. Waktu paling cepat: ' .
+                $minimal->format('d-m-Y H:i') .
+                ' WIB.'
+            );
         }
 
-        // Kalau delivery, alamat wajib diisi (pilih alamat tersimpan atau ketik alamat baru)
-        if ($delivery && empty($validated['id_alamat']) && empty($validated['alamat_lengkap'])) {
-            return $this->gagal($request, 'Alamat wajib diisi untuk pesanan delivery');
+        // Validasi maksimal jadwal 7 hari ke depan
+        if (
+            $waktuPilihan->gt(
+                Carbon::now($wib)->addDays(7)->endOfDay()
+            )
+        ) {
+            return $this->gagal(
+                $request,
+                'Pesanan hanya bisa dijadwalkan sampai 7 hari ke depan.'
+            );
         }
 
-        // Ongkir diambil dari hasil hitung jarak (token dari server), bukan angka dari browser
+        // Delivery wajib memiliki alamat
+        if (
+            $delivery &&
+            empty($validated['id_alamat']) &&
+            empty($validated['alamat_lengkap'])
+        ) {
+            return $this->gagal(
+                $request,
+                'Alamat wajib diisi untuk pesanan delivery.'
+            );
+        }
+
+        // Ongkir dihitung menggunakan token server
         $ongkir = 0;
         $titik = null;
+
         if ($delivery) {
-            $tok = Ongkir::bacaToken($validated['ongkir_token'] ?? null);
+            $tok = Ongkir::bacaToken(
+                $validated['ongkir_token'] ?? null
+            );
+
             if (!$tok) {
-                return $this->gagal($request, 'Tandai lokasi pengantaran di peta dulu agar ongkir bisa dihitung. Jika sudah lama, pilih ulang lokasinya.');
+                return $this->gagal(
+                    $request,
+                    'Tandai lokasi pengantaran di peta dulu agar ongkir bisa dihitung. Jika sudah lama, pilih ulang lokasinya.'
+                );
             }
+
             $ongkir = (int) $tok['ongkir'];
-            $titik = round($tok['lat'], 5) . ', ' . round($tok['lng'], 5);
+
+            $titik = round($tok['lat'], 5) .
+                ', ' .
+                round($tok['lng'], 5);
         }
 
-        // Gabungkan item yang produknya sama supaya pengecekan stok akurat
+        // Gabungkan produk yang sama
         $gabung = [];
+
         foreach ($validated['items'] as $item) {
             $id = (int) $item['id_produk'];
-            $gabung[$id] = ($gabung[$id] ?? 0) + (int) $item['jumlah'];
+
+            $gabung[$id] = ($gabung[$id] ?? 0) +
+                (int) $item['jumlah'];
         }
 
         try {
-            // Simpan pesanan + detail dalam satu transaction, biar kalau ada yang gagal, semua dibatalkan (rollback)
-            $pesanan = DB::transaction(function () use ($validated, $gabung, $delivery, $ongkir, $titik) {
+            $pesanan = DB::transaction(function () use (
+                $validated,
+                $gabung,
+                $delivery,
+                $ongkir,
+                $titik
+            ) {
+                $pembeli = Auth::guard('pembeli')->user();
 
-                $user = Auth::user();
+                if (!$pembeli) {
+                    throw new \DomainException(
+                        'Silakan login sebagai pembeli terlebih dahulu.'
+                    );
+                }
+
                 $totalHarga = 0;
                 $items = [];
 
-                // No. HP dari checkout disimpan ke akun & data pembeli (tampil di Profil dan dibaca kurir)
-                DB::table('users')->where('id_user', $user->id_user)
-                    ->update(['no_telepon' => $validated['no_telepon']]);
-
-                $idPembeli = \App\Support\PembeliAkun::id($user);
-                if ($idPembeli) {
-                    DB::table('pembeli')->where('id_pembeli', $idPembeli)
-                        ->update(['no_telepon' => $validated['no_telepon']]);
-                } else {
-                    $idPembeli = DB::table('pembeli')->insertGetId([
-                        'nama'       => $user->nama,
-                        'email'      => $user->email,
-                        'password'   => $user->password,
+                // Perbarui nomor telepon pembeli
+                DB::table('pembeli')
+                    ->where('id_pembeli', $pembeli->id_pembeli)
+                    ->update([
                         'no_telepon' => $validated['no_telepon'],
                     ]);
-                }
 
+                // Periksa dan kunci stok produk
                 foreach ($gabung as $idProduk => $jumlah) {
-                    // S2-06: lockForUpdate() mengunci baris produk ini sampai transaksi selesai.
-                    // Pembeli lain yang coba pesan produk yang sama HARUS menunggu giliran,
-                    // sehingga stok tidak pernah dibaca dua kali sebelum sempat dikurangi (anti-oversell).
                     $produk = Produk::where('id_produk', $idProduk)
                         ->lockForUpdate()
                         ->first();
 
                     if (!$produk) {
-                        throw new \Exception("Produk tidak ditemukan");
-                    }
-                    if ($produk->status_produk !== 'TERSEDIA') {
-                        throw new \Exception("Produk {$produk->nama_produk} sedang tidak tersedia");
-                    }
-                    if ($produk->stok < $jumlah) {
-                        throw new \Exception("Stok {$produk->nama_produk} tidak cukup (tersisa {$produk->stok})");
+                        throw new \Exception(
+                            'Produk tidak ditemukan.'
+                        );
                     }
 
-                    // Harga selalu diambil dari database, bukan dari kiriman browser
+                    if ($produk->status_produk !== 'TERSEDIA') {
+                        throw new \Exception(
+                            "Produk {$produk->nama_produk} sedang tidak tersedia."
+                        );
+                    }
+
+                    if ($produk->stok < $jumlah) {
+                        throw new \Exception(
+                            "Stok {$produk->nama_produk} tidak cukup (tersisa {$produk->stok})."
+                        );
+                    }
+
+                    // Harga diambil langsung dari database
                     $subtotal = $produk->harga * $jumlah;
+
                     $totalHarga += $subtotal;
 
                     $items[] = [
                         'id_produk' => $produk->id_produk,
-                        'jumlah'    => $jumlah,
-                        'subtotal'  => $subtotal,
+                        'jumlah' => $jumlah,
+                        'subtotal' => $subtotal,
                     ];
                 }
 
-                // Pesanan diantar: tambahkan ongkir hasil hitung jarak
+                // Tambahkan ongkir jika delivery
                 if ($delivery) {
                     $totalHarga += $ongkir;
                 }
 
-                // Alamat: kalau pelanggan mengetik alamat baru, simpan ke tabel alamat.
-                // (alamat.id_pembeli mengacu ke tabel pembeli, dicocokkan lewat email akun)
+                // Simpan alamat baru jika diperlukan
                 $idAlamat = $validated['id_alamat'] ?? null;
+
                 if ($delivery && !$idAlamat) {
                     $idAlamat = DB::table('alamat')->insertGetId([
-                        'id_pembeli'     => $idPembeli,
-                        'label_alamat'   => 'Rumah',
-                        // titik peta ikut dicatat supaya kurir mudah mencari lokasinya
-                        'alamat_lengkap' => Str::limit($validated['alamat_lengkap'], 200, '') . ' (Titik peta: ' . $titik . ')',
-                        'kota'           => '-',
-                        'kode_pos'       => '-',
+                        'id_pembeli' => $pembeli->id_pembeli,
+                        'label_alamat' => 'Rumah',
+                        'alamat_lengkap' => Str::limit(
+                            $validated['alamat_lengkap'],
+                            200,
+                            ''
+                        ) . ' (Titik peta: ' . $titik . ')',
+                        'kota' => '-',
+                        'kode_pos' => '-',
                     ]);
                 }
 
-                // Bikin kode pesanan otomatis: KM-YYYYMMDD-XXX (urutan per hari)
-                $urutan = Pesanan::whereDate('tanggal_pesan', now()->toDateString())->count() + 1;
-                $kodePesanan = 'KM-' . now()->format('Ymd') . '-' . str_pad($urutan, 3, '0', STR_PAD_LEFT);
+                // Buat kode pesanan
+                $urutan = Pesanan::whereDate(
+                    'tanggal_pesan',
+                    now()->toDateString()
+                )->count() + 1;
 
-                $pesananBaru = Pesanan::create([
-                        'kode_pesanan'      => $kodePesanan,
-                        'id_pembeli'        => $idPembeli,
-                        'id_alamat'         => $idAlamat,
-                        'tanggal_pesan'     => now(),
-                        'tanggal_ambil'     => $validated['tanggal_ambil'],
-                        'jenis_pengambilan' => $validated['jenis_pengambilan'],
-                        'status_pesanan'    => 'PENDING',
-                        'total_harga'       => $totalHarga,
-                    ]);
-                // Simpan tiap item ke detail_pesanan, sekalian kurangi stok
-                foreach ($items as $item) {
-                    DetailPesanan::create([
-                        'id_pesanan' => $pesananBaru->id_pesanan,
-                        'id_produk'  => $item['id_produk'],
-                        'jumlah'     => $item['jumlah'],
-                        'subtotal'   => $item['subtotal'],
-                    ]);
-
-                    // Masih di dalam baris yang sudah terkunci -> aman dari race condition
-                    Produk::where('id_produk', $item['id_produk'])->decrement('stok', $item['jumlah']);
-                }
-
-                return $pesananBaru;
-            });
-
-            // Dipanggil dari halaman checkout (fetch) -> balas JSON
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'ok'            => true,
-                    'id_pesanan'    => $pesanan->id_pesanan,
-                    'kode_pesanan'  => $pesanan->kode_pesanan,
-                    'total_harga'   => (float) $pesanan->total_harga,
-                ]);
-            }
-
-            return redirect()->route('pesanan.show', $pesanan->id_pesanan)
-                ->with('success', 'Pesanan berhasil dibuat dengan kode ' . $pesanan->kode_pesanan);
-
-        } catch (\Exception $e) {
-            // S2-06 DoD: pesanan kedua yang bentrok stok otomatis DITOLAK, bukan crash
-            return $this->gagal($request, $e->getMessage());
-        }
-    }
-
-    // Balasan error yang sesuai: JSON untuk checkout, redirect untuk form biasa
-    // Hitung jarak toko -> lokasi pelanggan lalu ongkirnya (dipanggil checkout setiap titik peta berubah)
-    private function hitungOngkir(Request $request)
-    {
-        $d = $request->validate([
-            'lat' => 'required|numeric|between:-90,90',
-            'lng' => 'required|numeric|between:-180,180',
-        ], [
-            'lat.required' => 'Lokasi belum dipilih di peta.',
-            'lng.required' => 'Lokasi belum dipilih di peta.',
-        ]);
-        $lat = (float) $d['lat'];
-        $lng = (float) $d['lng'];
-
-        if (!Ongkir::koordinatValid($lat, $lng)) {
-            return $this->gagal($request, 'Lokasi tidak valid. Pilih lokasi di wilayah Indonesia.');
-        }
-
-        [$km, $metode] = Ongkir::jarakKm($lat, $lng);
-        $ongkir = Ongkir::tarif($km);
-        if ($ongkir === null) {
-            return $this->gagal($request, 'Lokasi terlalu jauh (' . $km . ' km). Pengantaran maksimal ' . Ongkir::MAKS_KM . ' km dari toko. Silakan pilih "Ambil di toko".');
-        }
-
-        return response()->json([
-            'ok'        => true,
-            'jarak_km'  => $km,
-            'ongkir'    => $ongkir,
-            'metode'    => $metode,
-            'token'     => Ongkir::buatToken($lat, $lng, $km, $ongkir),
-        ]);
-    }
-
-    private function gagal(Request $request, string $pesan)
-    {
-        if ($request->expectsJson()) {
-            return response()->json(['message' => $pesan], 422);
-        }
-        return back()->withInput()->with('error', $pesan);
-=======
-        $validated = $request->validated();
-
-        try {
-            $pesanan = DB::transaction(function () use ($validated) {
-
-                // Gabungkan produk yang sama terlebih dahulu.
-                $gabungan = collect($validated['items'])
-                    ->groupBy('id_produk')
-                    ->map(fn ($baris, $id) => [
-                        'id_produk' => (int) $id,
-                        'jumlah'    => $baris->sum('jumlah'),
-                    ])
-                    ->values();
-
-                $totalHarga = 0;
-                $items = [];
-
-                foreach ($gabungan as $item) {
-
-                    // Lock produk sampai transaksi selesai
-                    // untuk mencegah overselling.
-                    $produk = Produk::where(
-                        'id_produk',
-                        $item['id_produk']
-                    )
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (!$produk) {
-                        throw new \Exception(
-                            "Produk tidak ditemukan"
-                        );
-                    }
-
-                    if ($produk->status_produk !== 'TERSEDIA') {
-                        throw new \Exception(
-                            "Produk {$produk->nama_produk} sedang tidak tersedia"
-                        );
-                    }
-
-                    if ($produk->stok < $item['jumlah']) {
-                        throw new \Exception(
-                            "Stok {$produk->nama_produk} tidak cukup (tersisa {$produk->stok})"
-                        );
-                    }
-
-                    $subtotal = $produk->harga * $item['jumlah'];
-
-                    $totalHarga += $subtotal;
-
-                    $items[] = [
-                        'id_produk' => $produk->id_produk,
-                        'jumlah'    => $item['jumlah'],
-                        'subtotal'  => $subtotal,
-                    ];
-                }
-
-                // Membuat kode pesanan
-                $prefix = 'KM-' . now()->format('Ymd') . '-';
-
-                $nomorTerakhir = Pesanan::where(
-                    'kode_pesanan',
-                    'like',
-                    $prefix . '%'
-                )
-                    ->lockForUpdate()
-                    ->max(
-                        DB::raw(
-                            "CAST(SUBSTRING_INDEX(kode_pesanan, '-', -1) AS UNSIGNED)"
-                        )
-                    );
-
-                $kodePesanan = $prefix . str_pad(
-                    ($nomorTerakhir ?? 0) + 1,
-                    3,
-                    '0',
-                    STR_PAD_LEFT
-                );
+                $kodePesanan = 'KM-' .
+                    now()->format('Ymd') .
+                    '-' .
+                    str_pad($urutan, 3, '0', STR_PAD_LEFT);
 
                 // Buat pesanan utama
                 $pesananBaru = Pesanan::create([
-                    'kode_pesanan'      => $kodePesanan,
-                    'id_pembeli'        => Auth::guard('pembeli')->id(),
-                    'id_alamat'         => $validated['id_alamat'] ?? null,
-                    'tanggal_ambil'     => $validated['tanggal_ambil'],
+                    'kode_pesanan' => $kodePesanan,
+                    'id_pembeli' => $pembeli->id_pembeli,
+                    'id_alamat' => $idAlamat,
+                    'tanggal_pesan' => now(),
+                    'tanggal_ambil' => $validated['tanggal_ambil'],
+                    'jam_ambil' => $validated['jam_ambil'],
                     'jenis_pengambilan' => $validated['jenis_pengambilan'],
-                    'status_pesanan'    => 'PENDING',
-                    'total_harga'       => $totalHarga,
+                    'status_pesanan' => 'PENDING',
+                    'total_harga' => $totalHarga,
                 ]);
 
-                // Buat detail pesanan dan kurangi stok
+                // Simpan detail pesanan dan kurangi stok
                 foreach ($items as $item) {
-
                     DetailPesanan::create([
                         'id_pesanan' => $pesananBaru->id_pesanan,
-                        'id_produk'  => $item['id_produk'],
-                        'jumlah'     => $item['jumlah'],
-                        'subtotal'   => $item['subtotal'],
+                        'id_produk' => $item['id_produk'],
+                        'jumlah' => $item['jumlah'],
+                        'subtotal' => $item['subtotal'],
                     ]);
 
                     Produk::where(
                         'id_produk',
                         $item['id_produk']
-                    )->decrement(
-                        'stok',
-                        $item['jumlah']
-                    );
+                    )->decrement('stok', $item['jumlah']);
 
-                    // Sesuaikan status produk setelah stok berkurang
                     $produk = Produk::find($item['id_produk']);
 
                     if ($produk) {
@@ -402,6 +287,16 @@ class PesananController extends Controller
                 return $pesananBaru;
             });
 
+            // Respons JSON untuk checkout menggunakan fetch
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => true,
+                    'id_pesanan' => $pesanan->id_pesanan,
+                    'kode_pesanan' => $pesanan->kode_pesanan,
+                    'total_harga' => (float) $pesanan->total_harga,
+                ]);
+            }
+
             return redirect()
                 ->route('pesanan.show', $pesanan->id_pesanan)
                 ->with(
@@ -411,16 +306,75 @@ class PesananController extends Controller
                 );
 
         } catch (\Exception $e) {
-
-            return back()
-                ->withInput()
-                ->with('error', $e->getMessage());
+            return $this->gagal($request, $e->getMessage());
         }
->>>>>>> origin/feature/backend
     }
 
-    // Detail 1 pesanan
-    // Hanya pembeli yang memiliki pesanan tersebut yang dapat melihatnya
+    // Hitung ongkir berdasarkan koordinat peta
+    private function hitungOngkir(Request $request)
+    {
+        $d = $request->validate([
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
+        ], [
+            'lat.required' => 'Lokasi belum dipilih di peta.',
+            'lng.required' => 'Lokasi belum dipilih di peta.',
+        ]);
+
+        $lat = (float) $d['lat'];
+        $lng = (float) $d['lng'];
+
+        if (!Ongkir::koordinatValid($lat, $lng)) {
+            return $this->gagal(
+                $request,
+                'Lokasi tidak valid. Pilih lokasi di wilayah Indonesia.'
+            );
+        }
+
+        [$km, $metode] = Ongkir::jarakKm($lat, $lng);
+
+        $ongkir = Ongkir::tarif($km);
+
+        if ($ongkir === null) {
+            return $this->gagal(
+                $request,
+                'Lokasi terlalu jauh (' .
+                $km .
+                ' km). Pengantaran maksimal ' .
+                Ongkir::MAKS_KM .
+                ' km dari toko. Silakan pilih "Ambil di toko".'
+            );
+        }
+
+        return response()->json([
+            'ok' => true,
+            'jarak_km' => $km,
+            'ongkir' => $ongkir,
+            'metode' => $metode,
+            'token' => Ongkir::buatToken(
+                $lat,
+                $lng,
+                $km,
+                $ongkir
+            ),
+        ]);
+    }
+
+    // Respons error untuk checkout JSON atau form biasa
+    private function gagal(Request $request, string $pesan)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $pesan,
+            ], 422);
+        }
+
+        return back()
+            ->withInput()
+            ->with('error', $pesan);
+    }
+
+    // Detail pesanan milik pembeli
     public function show($id)
     {
         $pembeli = Auth::guard('pembeli')->user();
@@ -430,7 +384,7 @@ class PesananController extends Controller
             'pembeli',
             'alamat',
             'pembayaran',
-            'pengiriman'
+            'pengiriman',
         ])
             ->where('id_pembeli', $pembeli->id_pembeli)
             ->findOrFail($id);
@@ -438,128 +392,89 @@ class PesananController extends Controller
         return view('pesanan.show', compact('pesanan'));
     }
 
-    // Halaman "Pesanan Terkonfirmasi"
+    // Halaman pesanan terkonfirmasi
     public function selesai()
     {
         return view('pesanan.selesai');
     }
 
-    // Halaman "Detail Pesanan" (tracking)
+    // Halaman detail pesanan / tracking
     public function detail()
     {
-        return view('pesanan.detail', ['produkJs' => ProdukController::katalogJs()]);
+        return view('pesanan.detail', [
+            'produkJs' => ProdukController::katalogJs(),
+        ]);
     }
 
-    // Halaman admin: Pesanan Masuk
+    // Halaman admin: pesanan masuk
     public function admin()
     {
-        $pesanan = Pesanan::with(['pembeli', 'detailPesanan.produk'])
+        $pesanan = Pesanan::with([
+            'pembeli',
+            'detailPesanan.produk',
+        ])
             ->orderBy('tanggal_pesan', 'desc')
             ->get();
 
         return view('admin.pesanan', compact('pesanan'));
     }
 
-    // Update status pesanan (dipakai Admin): hanya perpindahan yang valid
+    // Update status pesanan oleh Admin
     public function updateStatus(Request $request, $id)
     {
         $validated = $request->validate([
             'status_pesanan' => 'required|in:PENDING,DIKONFIRMASI,DIPROSES,SELESAI,DIBATALKAN',
         ]);
+
         $baru = $validated['status_pesanan'];
 
-<<<<<<< HEAD
-=======
-        // Perubahan status yang diizinkan
->>>>>>> origin/feature/backend
         $alur = [
-            'PENDING'      => ['DIKONFIRMASI', 'DIBATALKAN'],
+            'PENDING' => ['DIKONFIRMASI', 'DIBATALKAN'],
             'DIKONFIRMASI' => ['DIPROSES', 'DIBATALKAN'],
-            'DIPROSES'     => ['SELESAI', 'DIBATALKAN'],
-            'SELESAI'      => [],
-            'DIBATALKAN'   => [],
+            'DIPROSES' => ['SELESAI', 'DIBATALKAN'],
+            'SELESAI' => [],
+            'DIBATALKAN' => [],
         ];
 
         try {
-<<<<<<< HEAD
             DB::transaction(function () use ($id, $baru, $alur) {
-                $p = DB::table('pesanan')->where('id_pesanan', $id)->lockForUpdate()->first();
-                if (!$p) {
-                    throw new \Exception('Pesanan tidak ditemukan.');
-                }
-                if (!in_array($baru, $alur[$p->status_pesanan] ?? [], true)) {
-                    throw new \Exception('Status tidak bisa diubah dari ' . $p->status_pesanan . ' ke ' . $baru . '.');
-                }
-                if ($baru === 'SELESAI' && !DB::table('pembayaran')->where('id_pesanan', $id)->exists()) {
-                    throw new \Exception('Catat pembayaran terlebih dahulu sebelum menyelesaikan pesanan.');
-                }
-
-                // Pesanan dibatalkan: kembalikan stok produk
-                if ($baru === 'DIBATALKAN') {
-                    foreach (DB::table('detail_pesanan')->where('id_pesanan', $id)->get() as $d) {
-                        DB::table('produk')->where('id_produk', $d->id_produk)->increment('stok', $d->jumlah);
-                    }
-                }
-
-                DB::table('pesanan')->where('id_pesanan', $id)->update(['status_pesanan' => $baru]);
-            });
-        } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
-        }
-
-        return back()->with('success', 'Status pesanan berhasil diperbarui.');
-=======
-            DB::transaction(function () use ($id, $validated, $alur) {
-
-                // Kunci pesanan supaya tidak diubah
-                // oleh dua admin secara bersamaan.
                 $pesanan = Pesanan::with('detailPesanan')
                     ->lockForUpdate()
                     ->findOrFail($id);
 
                 $lama = $pesanan->status_pesanan;
-                $baru = $validated['status_pesanan'];
 
-                // Cek apakah perubahan status diperbolehkan
-                if (!in_array($baru, $alur[$lama] ?? [])) {
+                if (!in_array($baru, $alur[$lama] ?? [], true)) {
                     throw new \DomainException(
-                        "Status tidak bisa diubah dari {$lama} ke {$baru}"
+                        "Status tidak bisa diubah dari {$lama} ke {$baru}."
                     );
                 }
 
-                // Pesanan harus sudah memiliki pembayaran
-                // sebelum dapat diselesaikan.
+                // Pesanan harus memiliki pembayaran sebelum selesai
                 if (
                     $baru === 'SELESAI' &&
                     !$pesanan->pembayaran()->exists()
                 ) {
                     throw new \DomainException(
-                        'Catat pembayaran dulu sebelum menyelesaikan pesanan'
+                        'Catat pembayaran terlebih dahulu sebelum menyelesaikan pesanan.'
                     );
                 }
 
-                // Jika pesanan dibatalkan
                 if ($baru === 'DIBATALKAN') {
-
                     // Pesanan yang sudah dibayar tidak boleh dibatalkan
                     if ($pesanan->pembayaran()->exists()) {
                         throw new \DomainException(
-                            'Pesanan yang sudah dibayar tidak bisa dibatalkan'
+                            'Pesanan yang sudah dibayar tidak bisa dibatalkan.'
                         );
                     }
 
-                    // Kembalikan stok
+                    // Kembalikan stok produk
                     foreach ($pesanan->detailPesanan as $detail) {
-
                         Produk::where(
                             'id_produk',
                             $detail->id_produk
-                        )->increment(
-                            'stok',
-                            $detail->jumlah
-                        );
+                        )->increment('stok', $detail->jumlah);
 
-                        // Sesuaikan kembali status produk
                         $produk = Produk::find($detail->id_produk);
 
                         if ($produk) {
@@ -568,38 +483,31 @@ class PesananController extends Controller
                     }
                 }
 
-                // Simpan status pesanan
                 $pesanan->update([
-                    'status_pesanan' => $baru
+                    'status_pesanan' => $baru,
                 ]);
             });
 
         } catch (\DomainException $e) {
-
-            return back()->with(
-                'error',
-                $e->getMessage()
-            );
+            return back()->with('error', $e->getMessage());
         }
 
         return back()->with(
             'success',
-            'Status pesanan berhasil diperbarui'
+            'Status pesanan berhasil diperbarui.'
         );
     }
 
-    // Daftar SEMUA pesanan - khusus Admin & Owner
+    // Daftar semua pesanan khusus Admin dan Owner
     public function indexStaff()
     {
         $pesanan = Pesanan::with([
             'detailPesanan.produk',
-            'pembeli'
+            'pembeli',
         ])
             ->orderBy('tanggal_pesan', 'desc')
             ->get();
 
         return view('pesanan.index-staff', compact('pesanan'));
->>>>>>> origin/feature/backend
     }
-
 }
