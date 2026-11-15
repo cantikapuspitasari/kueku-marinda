@@ -88,7 +88,7 @@
 <div class="halaman">
   <div class="tombol">
     <button type="button" onclick="window.print()" @if ($bisaInputBayar) disabled title="Simpan pembayaran dulu sebelum mencetak" @endif>Cetak Struk</button>
-    <a href="javascript:history.back()">Kembali</a>
+    <a href="{{ $urlKembali }}">Kembali</a>
   </div>
 
   @if (session('success'))

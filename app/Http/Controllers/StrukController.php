@@ -75,6 +75,16 @@ class StrukController extends Controller
             && ! $pembayaran
             && in_array($pesanan->status_pesanan, ['DIKONFIRMASI', 'DIPROSES', 'SELESAI'], true);
 
+        // Tombol "Kembali": tautan tetap sesuai peran. history.back() tidak bisa dipakai karena struk
+        // sering dibuka di tab baru dan setelah simpan pembayaran halaman dimuat ulang.
+        $urlKembali = $akunStaf
+            ? match ($akunStaf->role) {
+                'ADMIN' => route('admin.pesanan'),
+                'KURIR' => route('kurir.pesanan'),
+                default => route('owner.monitoring'),
+            }
+            : route('pesanan.saya');
+
         return view('struk.show', [
             'pesanan'    => $pesanan,
             'delivery'   => $delivery,
@@ -85,6 +95,7 @@ class StrukController extends Controller
             'uangDiterima'   => $uangDiterima,
             'kembalian'      => $kembalian,
             'bisaInputBayar' => $bisaInputBayar,
+            'urlKembali'     => $urlKembali,
             'staffNama'  => $staffNama,
             'staffPeran' => $staffPeran,
             'pelanggan'  => $pesanan->pembeli->nama ?? '-',

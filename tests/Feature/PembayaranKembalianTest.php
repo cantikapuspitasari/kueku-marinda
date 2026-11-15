@@ -332,6 +332,33 @@ class PembayaranKembalianTest extends TestCase
             ->assertDontSee('disabled title="Simpan pembayaran dulu', false);
     }
 
+    public function test_tombol_kembali_struk_mengarah_ke_halaman_sesuai_peran(): void
+    {
+        $id = $this->buatPesanan('DELIVERY');
+        $this->tugaskan($id, $this->kurir);
+
+        $cek = fn ($akun, string $guard, string $tujuan) => $this->actingAs($akun, $guard)
+            ->get(route('pesanan.struk', $id))
+            ->assertOk()
+            ->assertSee('<a href="' . $tujuan . '">Kembali</a>', false)
+            ->assertDontSee('history.back', false);
+
+        $cek($this->admin, 'web', route('admin.pesanan'));
+        $cek($this->kurir, 'web', route('kurir.pesanan'));
+        $cek($this->owner, 'web', route('owner.monitoring'));
+    }
+
+    public function test_tombol_kembali_struk_pembeli_mengarah_ke_riwayat_pesanan(): void
+    {
+        $id = $this->buatPesanan('PICKUP');
+
+        $this->actingAs($this->pembeli, 'pembeli')
+            ->get(route('pesanan.struk', $id))
+            ->assertOk()
+            ->assertSee('<a href="' . route('pesanan.saya') . '">Kembali</a>', false)
+            ->assertDontSee('history.back', false);
+    }
+
     public function test_struk_delivery_belum_bayar_tidak_menampilkan_input_untuk_admin(): void
     {
         $id = $this->buatPesanan('DELIVERY');
