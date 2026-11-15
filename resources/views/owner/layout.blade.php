@@ -38,10 +38,10 @@
 @include('owner._sidebar', ['aktif' => $aktif ?? ''])
 
 <main class="flex-1 min-w-0 flex flex-col min-h-screen">
-  <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20 border-b border-warm px-6 lg:px-10 py-5 flex flex-wrap items-center justify-between gap-4">
+  <header class="bg-white/80 backdrop-blur-md md:sticky md:top-0 z-20 border-b border-warm px-4 md:px-6 lg:px-10 py-3 md:py-5 flex flex-wrap items-center justify-between gap-4">
     <div>
       <div class="flex flex-wrap items-center gap-3">
-        <h2 class="text-2xl lg:text-3xl font-bold font-serif text-stone-900">@yield('judul')</h2>
+        <h2 class="text-xl md:text-2xl lg:text-3xl font-bold font-serif text-stone-900">@yield('judul')</h2>
         <span class="hidden sm:inline-flex items-center text-xs font-medium text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200/60">
           <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>Toko Beroperasi • Monitoring Aktif
         </span>
@@ -57,7 +57,7 @@
     </div>
   </header>
 
-  <div class="p-6 lg:p-10 space-y-8 flex-1">
+  <div class="p-4 md:p-6 lg:p-10 space-y-6 md:space-y-8 flex-1 pb-24 md:pb-10">
     @if (session('success'))
       <div class="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm font-medium text-emerald-800">{{ session('success') }}</div>
     @endif
@@ -71,7 +71,7 @@
     @yield('isi')
   </div>
 
-  <footer class="px-6 lg:px-10 py-4 border-t border-warm flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-2 bg-canvas">
+  <footer class="hidden md:flex px-6 lg:px-10 py-4 border-t border-warm flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-2 bg-canvas">
     <span><strong class="font-semibold text-maroon">Kueku Marinda</strong> • Artisanal Bakery Management Portal (Owner Panel)</span>
     <span>© 2026 Kueku Marinda. Seluruh hak cipta dilindungi.</span>
   </footer>

@@ -36,7 +36,7 @@
 <body class="min-h-screen flex flex-col antialiased text-[#332C27] bg-[#FCF9F4]">
 
 <!-- Header -->
-<header class="sticky top-0 z-50 bg-[#FCF9F4] border-b border-[#993A3C]/15 px-8 py-3.5 flex items-center justify-between w-full">
+<header class="hidden md:flex sticky top-0 z-50 bg-[#FCF9F4] border-b border-[#993A3C]/15 px-8 py-3.5 items-center justify-between w-full">
   <div class="flex items-center gap-8">
     <a class="flex items-center gap-3.5 group flex-shrink-0" href="{{ url('/produk') }}">
       <img alt="Kueku Marinda Logo" class="w-10 h-10 object-contain rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwGCIuOCoAITy8b29-Xl0ot1fCWvx77fWzcFmbq-CNcvsAALDEIM_2QGz1fdXFIMzulM4GUMdnlUnHbYGuUeNR79JFdlnWBZ4MFuFWOjKBD4vlqoQ5Xu9DZzuvcXcidqcpK4mgYB01LA9t_DmFzRAMDAhKttKNP1omrjEyj3212Ve8b4bgYnw4vjdeNxIO994iYurhY4sf9O0JKNcGVkkYgijs4szgldACK9gsNeWV1020qX6bmsq84g0fmdJU2N02nmM">
@@ -61,12 +61,14 @@
   </div>
 </header>
 
-<main class="flex-grow w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl">
+@include('partials.pelanggan-mobile', ['aktif' => 'pesanan', 'judul' => 'Detail Pesanan', 'kembali' => route('pesanan.saya')])
+
+<main class="flex-grow w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-10 pb-28 md:pb-10 max-w-7xl">
 
   <!-- Judul -->
   <section class="mb-8">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#E6E0D6]">
-      <div class="flex items-center gap-3.5">
+      <div class="hidden md:flex items-center gap-3.5">
         <a class="w-11 h-11 rounded-full bg-white border border-[#DDD5C8] flex items-center justify-center text-maroon-700 hover:bg-maroon-700 hover:text-white transition shadow-xs" href="{{ url('/pesanan/selesai') }}" title="Kembali">
           <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
@@ -135,11 +137,19 @@
         </div>
       </div>
 
+      @php
+        // Nomor WhatsApp admin diambil dari akun ADMIN aktif, diubah ke format 62...
+        $waAdmin = \Illuminate\Support\Facades\DB::table('users')
+            ->where('role', 'ADMIN')->where('status_akun', 'AKTIF')
+            ->whereNotNull('no_telepon')->where('no_telepon', '!=', '')
+            ->value('no_telepon');
+        $waAdmin = $waAdmin ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdmin)) : null;
+      @endphp
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button class="w-full py-3.5 px-6 rounded-xl bg-maroon-700 hover:bg-maroon-800 text-white font-semibold text-sm shadow-xs hover:shadow transition flex items-center justify-center gap-2" type="button">
+        <a class="w-full py-3.5 px-6 rounded-xl bg-maroon-700 hover:bg-maroon-800 text-white font-semibold text-sm shadow-xs hover:shadow transition flex items-center justify-center gap-2" href="{{ $waAdmin ? 'https://wa.me/' . $waAdmin : '#' }}" target="_blank" rel="noopener noreferrer">
           <i class="fa-solid fa-headset text-sm"></i>
           <span>Hubungi Admin</span>
-        </button>
+        </a>
         <a class="w-full py-3.5 px-6 rounded-xl bg-white border border-[#D5CDC0] hover:bg-neutral-50 text-neutral-700 font-semibold text-sm shadow-2xs transition flex items-center justify-center gap-2" href="{{ url('/produk') }}">
           <i class="fa-solid fa-arrow-left text-xs"></i>
           <span>Kembali ke Beranda</span>

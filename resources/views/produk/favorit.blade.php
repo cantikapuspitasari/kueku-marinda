@@ -32,7 +32,7 @@
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen">
 
 <!-- Header -->
-<header class="w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
+<header class="hidden md:block w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
   <a class="flex items-center gap-3 group shrink-0" href="{{ url('/produk') }}">
     <img alt="Logo Kueku Marinda" class="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-[#993A3C]/20 transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp7AJEQ76C6MOzJmciFpvV6P9aqIdHHv4Vd9QVKOPW98sClvZ0GNR2RU8Mc3Ughath9lIYw-AHOAXYaIq_eKKmsooyGXm2VMbD0JmmXqj-1HISrnb6TkNyAh4F8MSHx-4-JK9KpteTUjfo_toYq9Pr5HPV8vzUYMtgjLs-MgTPRCw2AL_axsEFbWFdHIdXnw4_DVQYUebd14bVErpTKQwR_jMJ1QogQFrk1UA2KjmskKDrDPquRfE2ByUvMCV_pRDaPgM">
@@ -55,13 +55,15 @@
 </div>
 </header>
 
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-  <div>
+@include('partials.pelanggan-mobile', ['aktif' => 'favorit', 'judul' => 'Favorite', 'kembali' => null])
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-10 pb-28 md:pb-10 space-y-5 md:space-y-8">
+  <div class="hidden md:block">
     <h1 class="font-serif text-3xl sm:text-4xl font-bold text-gray-900">Produk Favorit</h1>
     <p class="text-sm text-gray-500 mt-1">Kue dan roti yang Anda tandai dengan ikon hati.</p>
   </div>
 
-  <div id="fav-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
+  <div id="fav-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6"></div>
 
   <div id="fav-empty" class="hidden text-center py-20 bg-white rounded-2xl border border-gray-200">
     <div class="w-16 h-16 mx-auto rounded-full bg-maroon-100 text-maroon flex items-center justify-center mb-4">
@@ -98,15 +100,15 @@ function render() {
     const ada = p.aktif && p.stok > 0;
     html += `
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col product-shadow transition" data-id="${id}">
-      <div class="relative w-full aspect-[4/3] bg-gray-100">
+      <div class="relative w-full aspect-square md:aspect-[4/3] bg-gray-100">
         <a href="{{ url('/produk') }}/${id}">${p.img ? `<img alt="${esc(p.name)}" class="w-full h-full object-cover" src="${p.img}">` : ""}</a>
         <button data-aksi="hapus" aria-label="Hapus dari favorit" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#993A3C] flex items-center justify-center shadow transition">
           <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
         </button>
       </div>
-      <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+      <div class="p-3 md:p-4 flex-1 flex flex-col justify-between space-y-2 md:space-y-3">
         <div>
-          <h4 class="font-semibold text-gray-900 text-base"><a href="{{ url('/produk') }}/${id}">${esc(p.name)}</a></h4>
+          <h4 class="font-semibold text-gray-900 text-sm md:text-base"><a href="{{ url('/produk') }}/${id}">${esc(p.name)}</a></h4>
           <p class="text-xs text-gray-500 mt-1">${esc(p.sub || "")}</p>
         </div>
         <div class="pt-2 border-t border-gray-100 flex items-center justify-end"><span class="text-sm font-bold text-maroon">${rp(p.price)}</span></div>

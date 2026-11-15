@@ -1,0 +1,25 @@
+[33mb6c1f9c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mintegrasi-sprint3[m[33m, [m[1;31morigin/integrasi-sprint3[m[33m)[m Integrasi frontend dan backend sprint 3
+ app/Http/Controllers/AuthController.php            | 266 [32m+++[m[31m-------[m
+ app/Http/Controllers/GoogleController.php          |  76 [32m+[m[31m--[m
+ app/Http/Controllers/HealthCheckController.php     |   2 [32m+[m[31m-[m
+ app/Http/Controllers/KategoriController.php        |   2 [32m+[m[31m-[m
+ app/Http/Controllers/LaporanController.php         |   2 [32m+[m[31m-[m
+ app/Http/Controllers/PembayaranController.php      |  39 [32m+[m[31m-[m
+ app/Http/Controllers/PengirimanController.php      | 144 [32m++[m[31m---[m
+ app/Http/Controllers/PesananController.php         | 580 [32m+++++++++[m[31m------------[m
+ app/Http/Controllers/ProdukController.php          |  34 [32m+[m[31m-[m
+ app/Http/Controllers/UserController.php            |   2 [32m+[m[31m-[m
+ app/Http/Requests/StorePesananRequest.php          |  83 [32m++[m[31m-[m
+ app/Models/Alamat.php                              |  16 [32m+[m[31m-[m
+ app/Models/Pembayaran.php                          |  28 [32m+[m[31m-[m
+ app/Models/Pembeli.php                             |  53 [32m+[m[31m-[m
+ app/Models/Pesanan.php                             |  74 [32m++[m[31m-[m
+ ...11_12_085858_add_jam_ambil_to_pesanan_table.php |  22 [32m+[m
+ database/seeders/DatabaseSeeder.php                | 127 [32m+++[m[31m--[m
+ resources/views/admin/pesanan.blade.php            | 391 [32m+++++++++++[m[31m---[m
+ resources/views/auth/login-staff.blade.php         | 552 [32m+++++++++++[m[31m---------[m
+ resources/views/auth/register.blade.php            | 490 [32m++++++++++[m[31m-------[m
+ resources/views/layouts/app.blade.php              |  47 [32m+[m[31m-[m
+ resources/views/welcome.blade.php                  | 427 [32m++++++++[m[31m-------[m
+ routes/web.php                                     | 427 [32m++++++++[m[31m-------[m
+ 23 files changed, 2034 insertions(+), 1850 deletions(-)

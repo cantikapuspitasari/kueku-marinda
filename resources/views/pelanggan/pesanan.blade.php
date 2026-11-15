@@ -32,7 +32,7 @@
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen">
 
 <!-- Header -->
-<header class="w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
+<header class="hidden md:block w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
   <a class="flex items-center gap-3 group shrink-0" href="{{ url('/produk') }}">
     <img alt="Logo Kueku Marinda" class="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-[#993A3C]/20 transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp7AJEQ76C6MOzJmciFpvV6P9aqIdHHv4Vd9QVKOPW98sClvZ0GNR2RU8Mc3Ughath9lIYw-AHOAXYaIq_eKKmsooyGXm2VMbD0JmmXqj-1HISrnb6TkNyAh4F8MSHx-4-JK9KpteTUjfo_toYq9Pr5HPV8vzUYMtgjLs-MgTPRCw2AL_axsEFbWFdHIdXnw4_DVQYUebd14bVErpTKQwR_jMJ1QogQFrk1UA2KjmskKDrDPquRfE2ByUvMCV_pRDaPgM">
@@ -55,8 +55,10 @@
 </div>
 </header>
 
-<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-  <div>
+@include('partials.pelanggan-mobile', ['aktif' => 'pesanan', 'judul' => 'Pesanan Saya', 'kembali' => null])
+
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-10 pb-28 md:pb-10 space-y-6">
+  <div class="hidden md:block">
     <h1 class="font-serif text-3xl sm:text-4xl font-bold text-gray-900">Pesanan Saya</h1>
     <p class="text-sm text-gray-500 mt-1">Semua pesanan Anda beserta status terbarunya.</p>
   </div>

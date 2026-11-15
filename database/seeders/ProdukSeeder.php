@@ -19,20 +19,20 @@ class ProdukSeeder extends Seeder
 
         // [nama, kategori, harga, stok, nama file foto, deskripsi]
         $produk = [
-            ['Baked Cheesecake Strawberry 15cm', 'Cake Medium 15cm', 200000, 10, 'baked-cheesecake-strawberry-15cm.webp', 'Cheesecake panggang lembut dengan topping strawberry segar. Diameter 15cm.'],
-            ['Coffee Cake 15cm',                 'Cake Medium 15cm', 180000, 10, 'coffee-cake-15cm.webp',                 'Cake kopi lembut dengan cream halus. Gratis tulisan dan 4 pcs lilin.'],
-            ['Nobake Cheesecake Strawberry 15cm','Cake Medium 15cm', 180000, 10, 'nobake-cheesecake-strawberry-15cm.webp','Cheesecake tanpa panggang dengan rasa segar dan topping strawberry. Diameter 15cm.'],
-            ['Bento Mix Fruit Cheesecake',       'Bento Cake 10cm',   74000, 15, 'bento-mix-fruit-cheesecake.webp',       'Cheesecake creamy asam segar dengan topping aneka buah. Diameter 10cm.'],
-            ['Bento Red Velvet Cream Cheese',    'Bento Cake 10cm',   74000, 15, 'bento-red-velvet.webp',                 'Cake red velvet dengan cream cheese frosting. Diameter 10cm.'],
-            ['Bento Strawberry Cheesecake',      'Bento Cake 10cm',   67000, 15, 'bento-strawberry-cheesecake.webp',      'Cheesecake asam segar dengan saus strawberry. Diameter 10cm.'],
-            ['Milkbun Vanilla isi 9',            'Roti',              34000, 20, 'milkbun-vanilla.webp',                  'Roti lembut dipadukan cream vanilla, isi 9 buah.'],
-            ['Roti Abon isi 2',                  'Roti',              18000, 25, 'roti-abon.webp',                        'Roti lembut dengan isian mayo dan abon gurih, isi 2 buah.'],
-            ['Roti Choco Cheese',                'Roti',              18000, 25, 'roti-choco-cheese.webp',                'Roti lembut dengan isian cokelat dan taburan keju.'],
-            ['Roti Cinnamoroll',                 'Roti',              18000, 25, 'roti-cinnamoroll.webp',                 'Roti gulung kayu manis dengan glaze manis.'],
-            ['Klappertaart Panggang',            'Pastry & Dessert',  27000, 20, 'klappertaart-panggang.webp',            'Cream vanilla dan potongan kelapa muda yang dipanggang.'],
-            ['Sus Krim Buah isi 4',              'Pastry & Dessert',  34000, 20, 'sus-krim-buah.webp',                    'Sus lembut dengan isian cream vanilla dan buah segar, isi 4 buah.'],
-            ['Cendol Nangka Gula Aren',          'Minuman',           24000, 30, 'cendol-nangka-gula-aren.webp',          'Cendol kekinian dengan nangka dan gula aren.'],
-            ['Kopi Susu Gula Aren',              'Minuman',           20000, 30, 'kopi-susu-gula-aren.webp',              'Kopi susu creamy dengan gula aren.'],
+            ['Baked Cheesecake Strawberry 15cm', 'Cake Medium 15cm', 200000, 10, 'baked-cheesecake-strawberry-15cm.png', 'Cheesecake panggang lembut dengan topping strawberry segar. Diameter 15cm.'],
+            ['Coffee Cake 15cm',                 'Cake Medium 15cm', 180000, 10, 'coffee-cake-15cm.png',                 'Cake kopi lembut dengan cream halus. Gratis tulisan dan 4 pcs lilin.'],
+            ['Nobake Cheesecake Strawberry 15cm','Cake Medium 15cm', 180000, 10, 'nobake-cheesecake-strawberry-15cm.png','Cheesecake tanpa panggang dengan rasa segar dan topping strawberry. Diameter 15cm.'],
+            ['Bento Mix Fruit Cheesecake',       'Bento Cake 10cm',   74000, 15, 'bento-mix-fruit-cheesecake.png',       'Cheesecake creamy asam segar dengan topping aneka buah. Diameter 10cm.'],
+            ['Bento Red Velvet Cream Cheese',    'Bento Cake 10cm',   74000, 15, 'bento-red-velvet.png',                 'Cake red velvet dengan cream cheese frosting. Diameter 10cm.'],
+            ['Bento Strawberry Cheesecake',      'Bento Cake 10cm',   67000, 15, 'bento-strawberry-cheesecake.png',      'Cheesecake asam segar dengan saus strawberry. Diameter 10cm.'],
+            ['Milkbun Vanilla isi 9',            'Roti',              34000, 20, 'milkbun-vanilla.png',                  'Roti lembut dipadukan cream vanilla, isi 9 buah.'],
+            ['Roti Abon isi 2',                  'Roti',              18000, 25, 'roti-abon.png',                        'Roti lembut dengan isian mayo dan abon gurih, isi 2 buah.'],
+            ['Roti Choco Cheese',                'Roti',              18000, 25, 'roti-choco-cheese.png',                'Roti lembut dengan isian cokelat dan taburan keju.'],
+            ['Roti Cinnamoroll',                 'Roti',              18000, 25, 'roti-cinnamoroll.png',                 'Roti gulung kayu manis dengan glaze manis.'],
+            ['Klappertaart Panggang',            'Pastry & Dessert',  27000, 20, 'klappertaart-panggang.png',            'Cream vanilla dan potongan kelapa muda yang dipanggang.'],
+            ['Sus Krim Buah isi 4',              'Pastry & Dessert',  34000, 20, 'sus-krim-buah.png',                    'Sus lembut dengan isian cream vanilla dan buah segar, isi 4 buah.'],
+            ['Cendol Nangka Gula Aren',          'Minuman',           24000, 30, 'cendol-nangka-gula-aren.png',          'Cendol kekinian dengan nangka dan gula aren.'],
+            ['Kopi Susu Gula Aren',              'Minuman',           20000, 30, 'kopi-susu-gula-aren.png',              'Kopi susu creamy dengan gula aren.'],
         ];
 
         $namaProduk = [];

@@ -92,7 +92,7 @@
             <div class="bg-white rounded-3xl shadow-card border border-warm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px]">
 
                 <!-- Kolom Kiri -->
-                <div class="lg:col-span-5 bg-[#FBF8F3] border-b lg:border-b-0 lg:border-r border-warm p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden">
+                <div class="hidden lg:flex lg:col-span-5 bg-[#FBF8F3] border-b lg:border-b-0 lg:border-r border-warm p-8 sm:p-10 flex-col justify-between relative overflow-hidden">
 
                     <div class="absolute -top-12 -left-12 w-48 h-48 bg-brand-maroon/5 rounded-full blur-2xl pointer-events-none"></div>
                     <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-100/40 rounded-full blur-2xl pointer-events-none"></div>
@@ -154,7 +154,7 @@
                 </div>
 
                 <!-- Kolom Kanan -->
-                <div class="lg:col-span-7 bg-white p-8 sm:p-12 flex flex-col justify-between">
+                <div class="lg:col-span-7 bg-white p-6 sm:p-12 flex flex-col justify-between">
 
                     <div>
 

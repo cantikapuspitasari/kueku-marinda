@@ -73,7 +73,7 @@
     <main class="w-full max-w-7xl min-h-screen md:min-h-[820px] bg-white md:rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:flex-row border border-warm-border/60">
 
         <!-- Left Branding Showcase -->
-        <section class="lg:w-1/2 relative bg-[#F7F2EA] flex flex-col justify-between p-8 sm:p-12 lg:p-14 overflow-hidden border-b lg:border-b-0 lg:border-r border-warm-border/50">
+        <section class="hidden lg:flex lg:w-1/2 relative bg-[#F7F2EA] flex-col justify-between p-8 sm:p-12 lg:p-14 overflow-hidden border-b lg:border-b-0 lg:border-r border-warm-border/50">
 
             <!-- Decorative Circles -->
             <div class="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#EFE4D2]/60 blur-3xl pointer-events-none"></div>
@@ -153,9 +153,14 @@
         </section>
 
         <!-- Right Register Form -->
-        <section class="lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-16 py-12 lg:py-16 bg-[#FFFDFB]">
+        <section class="lg:w-1/2 flex flex-col justify-center px-5 sm:px-12 lg:px-16 py-6 sm:py-12 lg:py-16 bg-[#FFFDFB]">
 
             <div class="w-full max-w-md mx-auto">
+<div class="lg:hidden flex items-center justify-between mb-6">
+  <a href="{{ route('home') }}" aria-label="Kembali" class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-maroon-700 active:bg-maroon-50"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg></a>
+  <div class="flex items-center gap-2"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgqqVp-lHgwPosX2ygScCFlmg2GflarJWp5uC6n5mlCvQcw0W0FIT9v3QeYPqHDtIyKo9tmuQgqLpKpXEDvTPkZaUIToNJQVkDaf04ncQvkBdrPQTZTvl4qzPlaVeswhBl39jIOaFgNcrJA6k8PgrZVaYg_u2vJIXEVRMFS-BO7uhENpuaQ3XEJIlRN3oUyVOdOpxSuiFvFJngTuLr729-Rd7id9JXU1RiVm_nHr4VJi_0U84PWZUyFYNf6T2cScB5MOU" alt="Logo" class="w-9 h-9 rounded-full object-cover ring-2 ring-maroon/20"><span class="font-serif text-lg font-bold text-maroon">Kueku Marinda</span></div>
+  <span class="w-10"></span>
+</div>
 
                 <!-- Heading -->
                 <div class="mb-8 text-center lg:text-left">

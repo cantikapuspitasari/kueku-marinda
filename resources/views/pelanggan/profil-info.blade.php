@@ -32,7 +32,7 @@
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen">
 
 <!-- Header -->
-<header class="w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
+<header class="hidden md:block w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
   <a class="flex items-center gap-3 group shrink-0" href="{{ url('/produk') }}">
     <img alt="Logo Kueku Marinda" class="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-[#993A3C]/20 transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp7AJEQ76C6MOzJmciFpvV6P9aqIdHHv4Vd9QVKOPW98sClvZ0GNR2RU8Mc3Ughath9lIYw-AHOAXYaIq_eKKmsooyGXm2VMbD0JmmXqj-1HISrnb6TkNyAh4F8MSHx-4-JK9KpteTUjfo_toYq9Pr5HPV8vzUYMtgjLs-MgTPRCw2AL_axsEFbWFdHIdXnw4_DVQYUebd14bVErpTKQwR_jMJ1QogQFrk1UA2KjmskKDrDPquRfE2ByUvMCV_pRDaPgM">
@@ -55,8 +55,10 @@
 </div>
 </header>
 
-<main class="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-  <div class="flex items-center gap-4">
+@include('partials.pelanggan-mobile', ['aktif' => 'profil', 'judul' => 'Edit Informasi', 'kembali' => "{{ route('profil') }}"])
+
+<main class="max-w-2xl mx-auto px-4 sm:px-6 py-5 md:py-10 pb-28 md:pb-10 space-y-6">
+  <div class="hidden md:flex items-center gap-4">
     <a href="{{ route('profil') }}" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-maroon hover:bg-maroon hover:text-white transition shadow-sm" aria-label="Kembali">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
     </a>

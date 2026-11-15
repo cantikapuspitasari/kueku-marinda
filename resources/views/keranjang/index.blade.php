@@ -33,7 +33,7 @@
 <body class="min-h-screen flex flex-col antialiased bg-[#FCF9F4] text-[#2D2828]">
 
 <!-- Header -->
-<header class="w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
+<header class="hidden md:block w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
   <a class="flex items-center gap-3 group shrink-0" href="{{ url('/produk') }}">
     <img alt="Logo Kueku Marinda" class="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-[#993A3C]/20 transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCNDZeOiEWl9DZfb3lIlaF9dpCVz7cWrvmSCrNlK9ggI4UQMVVTD0MvoQftuJPVkqUUgYAy1azxYysOg40FNLQAw7oyvFQ0pIU0tn53NojNRP1xB62C_9g2gcVwcSkn8dsCfIaZP9FxLpOdWag4P8MEL6lxGa80T83jY5BqH1yfjabDn_WK1I7msiTmLfQUE0M3aFYzUzcpWKtQQftLCCim1AV0kwCpet2JWwENUt0Q8IGiZ-xzOAEwPRVLYw3Ur-CSqo">
@@ -64,9 +64,11 @@
 </div>
 </header>
 
+@include('partials.pelanggan-mobile', ['aktif' => 'keranjang', 'judul' => 'Keranjang', 'kembali' => url('/produk')])
+
 <!-- Konten -->
-<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-  <section class="mb-6">
+<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 pb-28 md:pb-8 w-full">
+  <section class="hidden md:block mb-6">
     <div class="flex items-center gap-3">
       <a aria-label="Kembali" href="{{ url('/produk') }}" class="p-2 rounded-full text-[#2D2828] hover:text-[#993A3C] hover:bg-[#F6F3EE] transition-colors">
         <svg class="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>

@@ -34,7 +34,7 @@
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen">
 
 <!-- Header -->
-<header class="w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
+<header class="hidden md:block w-full bg-[#FCF9F4] border-b border-[#993A3C]/15 sticky top-0 z-50">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
   <a class="flex items-center gap-3 group shrink-0" href="#beranda">
     <img alt="Logo Kueku Marinda" class="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-[#993A3C]/20 transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp7AJEQ76C6MOzJmciFpvV6P9aqIdHHv4Vd9QVKOPW98sClvZ0GNR2RU8Mc3Ughath9lIYw-AHOAXYaIq_eKKmsooyGXm2VMbD0JmmXqj-1HISrnb6TkNyAh4F8MSHx-4-JK9KpteTUjfo_toYq9Pr5HPV8vzUYMtgjLs-MgTPRCw2AL_axsEFbWFdHIdXnw4_DVQYUebd14bVErpTKQwR_jMJ1QogQFrk1UA2KjmskKDrDPquRfE2ByUvMCV_pRDaPgM">
@@ -65,15 +65,17 @@
 </div>
 </header>
 
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12" id="beranda">
+@include('partials.pelanggan-mobile', ['aktif' => 'beranda', 'judul' => '', 'kembali' => null])
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 pb-28 md:pb-8 space-y-6 md:space-y-12" id="beranda">
 
 <!-- Hero -->
-<section class="bg-gradient-to-br from-cream to-white rounded-3xl p-8 sm:p-12 border border-orange-100/60 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
+<section class="bg-gradient-to-br from-cream to-white rounded-3xl p-5 sm:p-12 border border-orange-100/60 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
   <div class="md:w-1/2 space-y-5">
-    <h1 class="font-serif text-4xl sm:text-5xl font-bold text-gray-900 leading-tight">Cita Rasa Manis &amp; Lembut Istimewa</h1>
-    <p class="text-gray-600 text-base sm:text-lg leading-relaxed">Nikmati variasi roti lembut, cake ulang tahun elegan, bento cake estetik, dan minuman segar buatan tangan kami dengan bahan premium terbaik setiap hari.</p>
+    <h1 class="font-serif text-2xl sm:text-5xl font-bold text-gray-900 leading-tight">Cita Rasa Manis &amp; Lembut Istimewa</h1>
+    <p class="text-gray-600 text-sm sm:text-lg leading-relaxed">Nikmati variasi roti lembut, cake ulang tahun elegan, bento cake estetik, dan minuman segar buatan tangan kami dengan bahan premium terbaik setiap hari.</p>
   </div>
-  <div class="md:w-1/2 w-full flex justify-center">
+  <div class="md:w-1/2 w-full hidden sm:flex justify-center">
     <div class="relative w-full max-w-lg aspect-[4/3] rounded-2xl overflow-hidden shadow-lg border border-white">
       <img alt="Showcase Produk Kueku Marinda" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsTFZWv5Euy_IFZEFiz77jJcue5p3U_t9d4hS1aJFCsWqRTLrEV-JhR3rBAHFja57sNyBNMK_GiIS4eJZoH0_C3oKksXwcQBhx8wFMx1ksS7K-y3MD3B54RIOzXHHnIJtunFKTGGDj6x-7Rd57g-SY4ik8lzK2bMTpnJiIcTZcr0CDQl260nHz8Tu9Fq6WOQaAFS4fDw4pqBeKqIJAKWipfJrZfkmf1B_YuAH9RR-07WTV88ge4WJYzA">
     </div>
@@ -81,7 +83,7 @@
 </section>
 
 <!-- Info pembayaran -->
-<section class="bg-gray-100/90 rounded-2xl p-5 border border-gray-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+<section class="hidden md:flex bg-gray-100/90 rounded-2xl p-5 border border-gray-200/80 flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
   <div class="flex items-center gap-3">
     <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-maroon shadow-xs shrink-0">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
@@ -104,7 +106,7 @@
 @endphp
 
 <!-- Tab menu (dibuat dari kategori di database) -->
-<section class="space-y-4 pt-2" id="pilihan-menu">
+<section class="space-y-3 md:space-y-4 pt-1 md:pt-2" id="pilihan-menu">
   <h2 class="font-serif text-2xl font-bold text-gray-900">Pilihan menu</h2>
   <div class="flex items-center gap-6 sm:gap-8 border-b border-gray-200 overflow-x-auto pb-3 text-sm font-semibold whitespace-nowrap">
     @foreach ($groups as $namaKategori => $daftar)
@@ -115,9 +117,9 @@
 
 @forelse ($groups as $namaKategori => $daftar)
 <!-- ===================== {{ $namaKategori }} ===================== -->
-<section class="space-y-6 pt-4" id="kat-{{ \Illuminate\Support\Str::slug($namaKategori) }}">
+<section class="space-y-4 md:space-y-6 pt-2 md:pt-4" id="kat-{{ \Illuminate\Support\Str::slug($namaKategori) }}">
   <h3 class="font-serif text-2xl font-bold text-gray-900">{{ $namaKategori }}</h3>
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
 
     @foreach ($daftar as $p)
     @php
@@ -125,16 +127,16 @@
       $foto = $p->foto_produk ? asset('images/produk/' . $p->foto_produk) : '';
     @endphp
     <div class="product-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col product-shadow transition" data-id="{{ $p->id_produk }}">
-      <div class="relative w-full aspect-[4/3] bg-gray-100">
+      <div class="relative w-full aspect-square md:aspect-[4/3] bg-gray-100">
         <a href="{{ url('/produk/' . $p->id_produk) }}">@if ($foto)<img alt="{{ $p->nama_produk }}" class="w-full h-full object-cover" src="{{ $foto }}">@endif</a>
         <button aria-label="Favorit" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-gray-600 hover:text-maroon flex items-center justify-center shadow transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button>
       </div>
-      <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+      <div class="p-3 md:p-4 flex-1 flex flex-col justify-between space-y-2 md:space-y-3">
         <div>
-          <h4 class="font-semibold text-gray-900 text-base"><a href="{{ url('/produk/' . $p->id_produk) }}">{{ $p->nama_produk }}</a></h4>
-          <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ \Illuminate\Support\Str::limit($p->deskripsi, 90) }}</p>
+          <h4 class="font-semibold text-gray-900 text-sm md:text-base"><a href="{{ url('/produk/' . $p->id_produk) }}">{{ $p->nama_produk }}</a></h4>
+          <p class="hidden md:block text-xs text-gray-500 mt-1 line-clamp-2">{{ \Illuminate\Support\Str::limit($p->deskripsi, 90) }}</p>
         </div>
-        <div class="pt-2 border-t border-gray-100 flex items-center justify-between"><span class="text-xs text-gray-400 font-medium">{{ $namaKategori }}</span><span class="text-sm font-bold text-maroon">Rp {{ number_format($p->harga, 0, ',', '.') }}</span></div>
+        <div class="pt-2 border-t border-gray-100 flex items-center justify-between"><span class="hidden md:inline text-xs text-gray-400 font-medium">{{ $namaKategori }}</span><span class="text-sm font-bold text-maroon">Rp {{ number_format($p->harga, 0, ',', '.') }}</span></div>
         @if ($tersedia)
         <button class="btn-add w-full py-2 bg-maroon hover:bg-maroon-600 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg><span>tambah ke keranjang</span></button>
         @else

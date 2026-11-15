@@ -12,7 +12,7 @@
   ];
 @endphp
 <!-- Sidebar admin: dipakai semua halaman admin supaya tampilannya sama -->
-<aside class="w-full md:w-72 bg-maroon text-white flex-shrink-0 flex flex-col justify-between md:sticky md:top-0 md:h-screen shadow-lg z-30">
+<aside class="hidden md:flex w-full md:w-72 bg-maroon text-white flex-shrink-0 flex-col justify-between md:sticky md:top-0 md:h-screen shadow-lg z-30">
   <div>
     <div class="p-6 border-b border-white/10 flex items-center gap-3.5">
       <img alt="Logo Kueku Marinda" class="w-12 h-12 rounded-full border border-white/20 shadow-sm object-cover bg-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgqqVp-lHgwPosX2ygScCFlmg2GflarJWp5uC6n5mlCvQcw0W0FIT9v3QeYPqHDtIyKo9tmuQgqLpKpXEDvTPkZaUIToNJQVkDaf04ncQvkBdrPQTZTvl4qzPlaVeswhBl39jIOaFgNcrJA6k8PgrZVaYg_u2vJIXEVRMFS-BO7uhENpuaQ3XEJIlRN3oUyVOdOpxSuiFvFJngTuLr729-Rd7id9JXU1RiVm_nHr4VJi_0U84PWZUyFYNf6T2cScB5MOU">
@@ -55,3 +55,5 @@
     </form>
   </div>
 </aside>
+
+@include('partials.staff-mobile', ['menu' => $menu, 'aktif' => $aktif, 'peran' => 'Admin Panel', 'nama' => $adminNama])
