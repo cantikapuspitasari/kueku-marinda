@@ -86,6 +86,8 @@ CREATE TABLE `pembayaran` (
     `id_pesanan` INT NOT NULL UNIQUE,
     `id_user` INT NOT NULL,
     `jumlah_bayar` DECIMAL(10,2) NOT NULL,
+    `uang_diterima` DECIMAL(10,2) NULL,
+    `kembalian` DECIMAL(10,2) NOT NULL DEFAULT 0,
     `tempat_pembayaran` ENUM('TOKO','ALAMAT_PEMBELI') NOT NULL,
     `tanggal_bayar` DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_pembayaran_pesanan` FOREIGN KEY (`id_pesanan`)
@@ -136,8 +138,8 @@ INSERT INTO `pesanan` (`id_pesanan`,`kode_pesanan`,`id_pembeli`,`id_alamat`,`tan
 INSERT INTO `detail_pesanan` (`id_pesanan`,`id_produk`,`jumlah`,`subtotal`) VALUES
 (1,1,1,35000.00);
 
-INSERT INTO `pembayaran` (`id_pesanan`,`id_user`,`jumlah_bayar`,`tempat_pembayaran`,`tanggal_bayar`) VALUES
-(1,3,35000.00,'ALAMAT_PEMBELI','2026-09-30 15:00:00');
+INSERT INTO `pembayaran` (`id_pesanan`,`id_user`,`jumlah_bayar`,`uang_diterima`,`kembalian`,`tempat_pembayaran`,`tanggal_bayar`) VALUES
+(1,3,35000.00,50000.00,15000.00,'ALAMAT_PEMBELI','2026-09-30 15:00:00');
 
 INSERT INTO `pengiriman` (`id_pesanan`,`id_user`,`status_pengiriman`,`waktu_diambil`,`waktu_terkirim`) VALUES
 (1,3,'TERKIRIM','2026-09-30','2026-09-30');

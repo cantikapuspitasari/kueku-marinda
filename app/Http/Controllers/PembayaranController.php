@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pembayaran;
+use App\Models\Pengiriman;
 use App\Models\Pesanan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,17 +12,27 @@ use Illuminate\Support\Facades\DB;
 class PembayaranController extends Controller
 {
     // Mencatat pembayaran tunai untuk sebuah pesanan
-    // Dipanggil oleh Admin atau Kurir
+    // - PICKUP   : dicatat Admin di toko
+    // - DELIVERY : dicatat Kurir yang mengantar pesanan tersebut
+    // Uang diterima divalidasi di sini, kembalian SELALU dihitung ulang di server
+    // (nilai kembalian dari browser tidak pernah dipercaya).
     public function store(Request $request, $idPesanan)
     {
         $validated = $request->validate([
             'tempat_pembayaran' => 'required|in:TOKO,ALAMAT_PEMBELI',
+            'uang_diterima'     => 'required|integer|min:0|max:99999999',
+        ], [
+            'uang_diterima.required' => 'Nominal uang diterima wajib diisi.',
+            'uang_diterima.integer'  => 'Nominal uang diterima harus berupa angka bulat (rupiah).',
+            'uang_diterima.min'      => 'Nominal uang diterima tidak boleh negatif.',
+            'uang_diterima.max'      => 'Nominal uang diterima terlalu besar.',
         ]);
 
         $staf = Auth::guard('web')->user();
+        $kembalian = 0;
 
         try {
-            DB::transaction(function () use ($idPesanan, $validated, $staf) {
+            DB::transaction(function () use ($idPesanan, $validated, $staf, &$kembalian) {
 
                 // Kunci pesanan supaya dua permintaan bersamaan tidak sama-sama lolos
                 $pesanan = Pesanan::lockForUpdate()->findOrFail($idPesanan);
@@ -30,6 +41,32 @@ class PembayaranController extends Controller
                     throw new \DomainException(
                         "Pesanan berstatus {$pesanan->status_pesanan} belum bisa dibayar"
                     );
+                }
+
+                // Admin hanya mencatat pembayaran pickup (di toko)
+                if ($staf->role === 'ADMIN' && $pesanan->jenis_pengambilan !== 'PICKUP') {
+                    throw new \DomainException(
+                        'Pembayaran pesanan delivery hanya dapat dicatat oleh kurir yang mengantar'
+                    );
+                }
+
+                // Kurir hanya mencatat pembayaran delivery yang ditugaskan kepadanya
+                if ($staf->role === 'KURIR') {
+                    if ($pesanan->jenis_pengambilan !== 'DELIVERY') {
+                        throw new \DomainException(
+                            'Kurir hanya bisa mencatat pembayaran pesanan delivery'
+                        );
+                    }
+
+                    $tugasSaya = Pengiriman::where('id_pesanan', $pesanan->id_pesanan)
+                        ->where('id_user', $staf->id_user)
+                        ->exists();
+
+                    if (! $tugasSaya) {
+                        throw new \DomainException(
+                            'Pesanan ini bukan tugas pengantaran Anda'
+                        );
+                    }
                 }
 
                 // PICKUP dibayar di toko
@@ -44,16 +81,6 @@ class PembayaranController extends Controller
                     );
                 }
 
-                // Kurir hanya boleh mencatat pembayaran di alamat pembeli
-                if (
-                    $staf->role === 'KURIR' &&
-                    $validated['tempat_pembayaran'] !== 'ALAMAT_PEMBELI'
-                ) {
-                    throw new \DomainException(
-                        'Kurir hanya bisa mencatat pembayaran di alamat pembeli'
-                    );
-                }
-
                 // Cegah pembayaran dua kali
                 if ($pesanan->pembayaran()->exists()) {
                     throw new \DomainException(
@@ -61,10 +88,25 @@ class PembayaranController extends Controller
                     );
                 }
 
+                // Hitung ulang di server: kembalian = uang diterima - total pembayaran
+                $total  = (int) round($pesanan->total_harga);
+                $diterima = (int) $validated['uang_diterima'];
+
+                if ($diterima < $total) {
+                    throw new \DomainException(
+                        'Uang diterima masih kurang Rp' . number_format($total - $diterima, 0, ',', '.')
+                        . ' dari total pembayaran Rp' . number_format($total, 0, ',', '.')
+                    );
+                }
+
+                $kembalian = $diterima - $total;
+
                 Pembayaran::create([
                     'id_pesanan'        => $pesanan->id_pesanan,
                     'id_user'           => $staf->id_user,
-                    'jumlah_bayar'      => $pesanan->total_harga,
+                    'jumlah_bayar'      => $total,
+                    'uang_diterima'     => $diterima,
+                    'kembalian'         => $kembalian,
                     'tempat_pembayaran' => $validated['tempat_pembayaran'],
                 ]);
 
@@ -79,14 +121,23 @@ class PembayaranController extends Controller
 
         } catch (\DomainException $e) {
 
-            return back()->withErrors([
+            return back()->withInput()->withErrors([
                 'pesanan' => $e->getMessage()
+            ]);
+
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+
+            // Jaring pengaman terakhir: kolom id_pesanan pada tabel pembayaran unik
+            return back()->withErrors([
+                'pesanan' => 'Pesanan ini sudah tercatat pembayarannya'
             ]);
         }
 
         return back()->with(
             'success',
-            'Pembayaran berhasil dicatat'
+            $kembalian > 0
+                ? 'Pembayaran berhasil dicatat. Kembalian: Rp' . number_format($kembalian, 0, ',', '.')
+                : 'Pembayaran berhasil dicatat. Uang pas, tidak ada kembalian.'
         );
     }
 

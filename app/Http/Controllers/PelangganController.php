@@ -41,14 +41,19 @@ class PelangganController extends Controller
 
         $kirim = DB::table('pengiriman')->whereIn('id_pesanan', $ids)->get()->keyBy('id_pesanan');
 
-        $daftar = $pesanan->map(function ($p) use ($item, $kirim) {
+        // Data pembayaran tunai yang tersimpan (uang diterima & kembalian)
+        $bayar = DB::table('pembayaran')->whereIn('id_pesanan', $ids)->get()->keyBy('id_pesanan');
+
+        $daftar = $pesanan->map(function ($p) use ($item, $kirim, $bayar) {
             $h = TahapPesanan::hitung($p->status_pesanan, $p->jenis_pengambilan, $kirim[$p->id_pesanan]->status_pengiriman ?? null);
             $label = match ($h['state']) {
                 'batal'    => 'Dibatalkan',
                 'menunggu' => 'Menunggu Verifikasi',
                 default    => ($p->jenis_pengambilan === 'PICKUP' ? self::LABEL_TOKO : self::LABEL_KURIR)[$h['tahap']],
             };
+            $by = $bayar[$p->id_pesanan] ?? null;
             return (object) [
+                'id'     => $p->id_pesanan,
                 'kode'   => $p->kode_pesanan,
                 'tanggal'=> $p->tanggal_pesan,
                 'jenis'  => $p->jenis_pengambilan,
@@ -57,6 +62,11 @@ class PelangganController extends Controller
                 'tahap'  => $h['tahap'],
                 'label'  => $label,
                 'item'   => $item[$p->id_pesanan] ?? collect(),
+                // null = belum ada pembayaran tercatat. Data lama tanpa uang_diterima dianggap uang pas.
+                'bayar'  => $by ? (object) [
+                    'diterima'  => $by->uang_diterima ?? $by->jumlah_bayar,
+                    'kembalian' => $by->kembalian ?? 0,
+                ] : null,
             ];
         });
 

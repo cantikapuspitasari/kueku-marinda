@@ -14,12 +14,16 @@ class Pembayaran extends Model
         'id_pesanan',
         'id_user',
         'jumlah_bayar',
+        'uang_diterima',
+        'kembalian',
         'tempat_pembayaran',
         'tanggal_bayar',
     ];
 
     protected $casts = [
         'jumlah_bayar' => 'decimal:2',
+        'uang_diterima' => 'decimal:2',
+        'kembalian' => 'decimal:2',
         'tanggal_bayar' => 'datetime',
     ];
 

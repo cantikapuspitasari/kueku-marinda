@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Pesanan;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class StrukController extends Controller
 {
@@ -20,12 +19,24 @@ class StrukController extends Controller
         $pesanan = Pesanan::with(['detailPesanan.produk', 'pembeli', 'pembayaran', 'pengiriman'])
             ->findOrFail($idPesanan);
 
-        $user = Auth::user();
+        // Staf (guard web) atau pembeli (guard pembeli). Model Pembeli tidak punya kolom role,
+        // jadi pembeli dikenali dari guard-nya, bukan dari $user->role.
+        $akunStaf = Auth::guard('web')->user();
 
-        // Pembeli hanya boleh melihat struk pesanannya sendiri
-        if ($user->role === 'PEMBELI') {
-            $idPembeli = DB::table('pembeli')->where('email', $user->email)->value('id_pembeli');
-            abort_unless($idPembeli && (int) $idPembeli === (int) $pesanan->id_pembeli, 403, 'Struk ini bukan milik Anda.');
+        if ($akunStaf) {
+            abort_unless(
+                in_array($akunStaf->role, array_keys(self::PERAN), true) && $akunStaf->status_akun !== 'NONAKTIF',
+                403,
+                'Anda tidak memiliki akses untuk halaman ini.'
+            );
+        } else {
+            // Pembeli hanya boleh melihat struk pesanannya sendiri
+            $pembeli = Auth::guard('pembeli')->user();
+            abort_unless(
+                $pembeli && (int) $pembeli->id_pembeli === (int) $pesanan->id_pembeli,
+                403,
+                'Struk ini bukan milik Anda.'
+            );
         }
 
         abort_if($pesanan->status_pesanan === 'DIBATALKAN', 403, 'Pesanan yang dibatalkan tidak memiliki struk.');
@@ -51,6 +62,19 @@ class StrukController extends Controller
         $staffNama = $staff->nama ?? null;
         $staffPeran = $staff ? (self::PERAN[$staff->role] ?? ucfirst(strtolower($staff->role))) : ($delivery ? 'Kurir' : 'Admin');
 
+        // ----- PEMBAYARAN TUNAI -----
+        // Data lama (sebelum ada fitur kembalian) dianggap uang pas.
+        $uangDiterima = $pembayaran ? (int) round($pembayaran->uang_diterima ?? $pembayaran->jumlah_bayar) : null;
+        $kembalian    = $pembayaran ? (int) round($pembayaran->kembalian ?? 0) : null;
+
+        // Input uang diterima di halaman struk hanya untuk ADMIN pada pesanan Ambil di Toko yang belum dibayar.
+        // (Pembayaran delivery diinput kurir dari panel kurir.)
+        $bisaInputBayar = $akunStaf
+            && $akunStaf->role === 'ADMIN'
+            && ! $delivery
+            && ! $pembayaran
+            && in_array($pesanan->status_pesanan, ['DIKONFIRMASI', 'DIPROSES', 'SELESAI'], true);
+
         return view('struk.show', [
             'pesanan'    => $pesanan,
             'delivery'   => $delivery,
@@ -58,6 +82,9 @@ class StrukController extends Controller
             'ongkir'     => $ongkir,
             'total'      => $total,
             'pembayaran' => $pembayaran,
+            'uangDiterima'   => $uangDiterima,
+            'kembalian'      => $kembalian,
+            'bisaInputBayar' => $bisaInputBayar,
             'staffNama'  => $staffNama,
             'staffPeran' => $staffPeran,
             'pelanggan'  => $pesanan->pembeli->nama ?? '-',

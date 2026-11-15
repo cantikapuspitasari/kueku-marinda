@@ -113,9 +113,6 @@ Route::middleware('auth:pembeli')->group(function () {
     Route::get('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'show'])
         ->name('pembayaran.show');
 
-    Route::get('pesanan/{idPesanan}/struk', [StrukController::class, 'show'])
-        ->name('pesanan.struk');
-
     // Pesanan Saya dan Profil
     Route::get('pesanan-saya', [PelangganController::class, 'pesanan'])
         ->name('pesanan.saya');
@@ -140,6 +137,15 @@ Route::middleware('auth:pembeli')->group(function () {
 
     Route::delete('profil/alamat/{id}', [PelangganController::class, 'hapusAlamat'])
         ->name('profil.alamat.destroy');
+});
+
+// ---------- Struk Pembelian ----------
+// Dibuka staf (admin / owner / kurir) atau pembeli pemilik pesanan.
+// Hak akses per pesanan dicek di StrukController.
+Route::middleware('auth:web,pembeli')->group(function () {
+
+    Route::get('pesanan/{idPesanan}/struk', [StrukController::class, 'show'])
+        ->name('pesanan.struk');
 });
 
 // ---------- Akun Staf ----------

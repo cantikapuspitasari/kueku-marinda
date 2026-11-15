@@ -307,7 +307,6 @@
 
           $berikut = $alur[$p->status_pesanan] ?? [];
           $sudahBayar = (bool) $p->pembayaran;
-          $tempatBayar = $delivery ? 'ALAMAT_PEMBELI' : 'TOKO';
         @endphp
 
         @if (in_array($p->status_pesanan, ['DIKONFIRMASI', 'DIPROSES']))
@@ -317,21 +316,21 @@
 
               @if ($sudahBayar)
                 <p class="text-xs text-emerald-700 font-medium">Sudah tercatat dibayar.</p>
+                <p class="text-xs text-stone-500 mt-0.5">
+                  Uang diterima Rp {{ number_format($p->pembayaran->uang_diterima ?? $p->pembayaran->jumlah_bayar, 0, ',', '.') }}
+                  &middot; Kembalian Rp {{ number_format($p->pembayaran->kembalian ?? 0, 0, ',', '.') }}
+                </p>
               @else
                 <p class="text-xs text-stone-500">
-                  {{ $delivery ? 'Delivery dibayar di alamat pembeli (dicatat kurir/admin).' : 'Pickup dibayar di toko. Pesanan otomatis selesai setelah dicatat.' }}
+                  {{ $delivery ? 'Delivery dibayar tunai di alamat pembeli. Nominal uang diterima diinput oleh kurir yang mengantar.' : 'Pickup dibayar di toko. Input uang diterima di halaman struk; pesanan otomatis selesai setelah pembayaran disimpan.' }}
                 </p>
               @endif
             </div>
 
-            @if (!$sudahBayar)
-              <form method="POST" action="{{ route('pembayaran.store', $p->id_pesanan) }}">
-                @csrf
-                <input type="hidden" name="tempat_pembayaran" value="{{ $tempatBayar }}">
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-semibold transition">
-                  Catat Pembayaran
-                </button>
-              </form>
+            @if (!$sudahBayar && !$delivery)
+              <a href="{{ route('pesanan.struk', $p->id_pesanan) }}" target="_blank" class="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-semibold transition">
+                Input Pembayaran &amp; Struk
+              </a>
             @endif
           </div>
         @endif

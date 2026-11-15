@@ -102,11 +102,29 @@
 
       <div class="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span class="text-xs text-gray-400 block">Total</span>
+          <span class="text-xs text-gray-400 block">Total Pembayaran</span>
           <span class="text-lg font-bold text-maroon">Rp {{ number_format($o->total, 0, ',', '.') }}</span>
         </div>
-        <a href="{{ url('/pesanan/detail') }}?kode={{ urlencode($o->kode) }}" class="px-5 py-2.5 bg-maroon hover:bg-maroon-600 text-white rounded-xl text-xs font-semibold transition shadow-sm">Lihat Detail &amp; Lacak</a>
+        <div class="flex flex-wrap items-center gap-2">
+          @if ($o->bayar)
+            <a href="{{ route('pesanan.struk', $o->id) }}" target="_blank" class="px-5 py-2.5 bg-white hover:bg-maroon-50 text-maroon border border-maroon/40 rounded-xl text-xs font-semibold transition">Lihat Struk</a>
+          @endif
+          <a href="{{ url('/pesanan/detail') }}?kode={{ urlencode($o->kode) }}" class="px-5 py-2.5 bg-maroon hover:bg-maroon-600 text-white rounded-xl text-xs font-semibold transition shadow-sm">Lihat Detail &amp; Lacak</a>
+        </div>
       </div>
+
+      @if ($o->bayar)
+        <dl class="mt-3 grid grid-cols-2 gap-3 rounded-xl bg-cream border border-gray-100 px-4 py-3">
+          <div>
+            <dt class="text-xs text-gray-400">Uang diterima</dt>
+            <dd class="text-sm font-semibold text-gray-800">Rp {{ number_format($o->bayar->diterima, 0, ',', '.') }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-gray-400">Uang kembalian</dt>
+            <dd class="text-sm font-semibold text-gray-800">Rp {{ number_format($o->bayar->kembalian, 0, ',', '.') }}</dd>
+          </div>
+        </dl>
+      @endif
     </div>
   @empty
     <div class="text-center py-20 bg-white rounded-2xl border border-gray-200">

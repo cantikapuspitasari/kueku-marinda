@@ -41,6 +41,7 @@ class KurirController extends Controller
             ->leftJoin('pembeli as b', 'b.id_pembeli', '=', 'p.id_pembeli')
             ->leftJoin('users as u', 'u.email', '=', 'b.email')
             ->leftJoin('alamat as a', 'a.id_alamat', '=', 'p.id_alamat')
+            ->leftJoin('pembayaran as y', 'y.id_pesanan', '=', 'p.id_pesanan')
             ->where(function ($q) use ($hariIni) {
                 $q->whereIn('g.status_pengiriman', ['MENUNGGU', 'DIAMBIL_KURIR', 'DIANTAR'])
                   ->orWhere(function ($q2) use ($hariIni) {
@@ -52,6 +53,10 @@ class KurirController extends Controller
             ->get([
                 'g.status_pengiriman', 'p.id_pesanan', 'p.kode_pesanan', 'p.total_harga', 'p.tanggal_ambil',
                 'b.nama as pelanggan', DB::raw("COALESCE(NULLIF(b.no_telepon, ''), u.no_telepon) as telepon"), 'a.alamat_lengkap', 'a.kota',
+                // Pembayaran tunai (null = belum dicatat). Data lama tanpa uang_diterima dianggap uang pas.
+                'y.id_pembayaran',
+                DB::raw('COALESCE(y.uang_diterima, y.jumlah_bayar) as uang_diterima'),
+                DB::raw('COALESCE(y.kembalian, 0) as kembalian'),
             ]);
 
         $item = DB::table('detail_pesanan as d')
