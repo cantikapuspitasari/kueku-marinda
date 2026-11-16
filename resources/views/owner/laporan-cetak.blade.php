@@ -17,12 +17,16 @@
   .catatan { margin-top: 18px; font-size: 11px; color: #57534e; }
   .alat { margin-bottom: 16px; }
   .alat button { background: #993A3C; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .alat a { display: inline-block; margin-left: 8px; padding: 7px 16px; border: 1px solid #993A3C; border-radius: 6px; color: #993A3C; font-size: 13px; text-decoration: none; }
   @media print { .alat { display: none; } body { margin: 0; } }
 </style>
 </head>
 <body>
 @if ($mode === 'cetak')
-  <div class="alat"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div>
+  <div class="alat">
+    <button type="button" onclick="window.print()">Cetak / Simpan PDF</button>
+    <a href="{{ $urlKembali }}">Kembali ke Laporan</a>
+  </div>
 @endif
 
 <h1>Laporan Pesanan, {{ $label }}</h1>

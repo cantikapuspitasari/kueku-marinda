@@ -422,6 +422,47 @@ class PembayaranKembalianTest extends TestCase
             ->assertOk()->assertDontSee('123.000')->assertDontSee(route('pesanan.struk', $idOrang), false);
     }
 
+    // ---------- JAM LAPORAN OWNER ----------
+
+    public function test_jam_dicetak_pada_laporan_owner_memakai_waktu_wib(): void
+    {
+        $this->assertSame('Asia/Jakarta', config('app.timezone'));
+
+        foreach (['cetak', 'excel'] as $format) {
+            $sebelum = now('Asia/Jakarta')->locale('id')->translatedFormat('d M Y H:');
+
+            $res = $this->actingAs($this->owner, 'web')
+                ->get(route('owner.laporan.unduh', ['format' => $format]))
+                ->assertOk();
+
+            $sesudah = now('Asia/Jakarta')->locale('id')->translatedFormat('d M Y H:');
+            $isi = $res->getContent();
+
+            $this->assertTrue(
+                str_contains($isi, 'Dicetak ' . $sebelum) || str_contains($isi, 'Dicetak ' . $sesudah),
+                "Jam 'Dicetak' pada format {$format} tidak sama dengan waktu WIB sekarang."
+            );
+        }
+    }
+
+    public function test_halaman_cetak_laporan_punya_tombol_kembali_dengan_periode_sama(): void
+    {
+        $query = ['dari' => '2026-11-01', 'sampai' => '2026-11-15', 'top' => 5];
+        $kembali = e(route('owner.laporan', $query));
+
+        $this->actingAs($this->owner, 'web')
+            ->get(route('owner.laporan.unduh', $query + ['format' => 'cetak']))
+            ->assertOk()
+            ->assertSee('Kembali ke Laporan')
+            ->assertSee('href="' . $kembali . '"', false);
+
+        // Excel berupa unduhan file, tidak perlu tombol kembali
+        $this->actingAs($this->owner, 'web')
+            ->get(route('owner.laporan.unduh', $query + ['format' => 'excel']))
+            ->assertOk()
+            ->assertDontSee('Kembali ke Laporan');
+    }
+
     // ---------- PANEL KURIR & ADMIN ----------
 
     public function test_panel_kurir_menampilkan_form_lalu_ringkasan_pembayaran(): void

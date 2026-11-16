@@ -195,6 +195,12 @@ class OwnerLaporanController extends Controller
 
         $html = view('owner.laporan-cetak', [
             'mode'     => $format,
+            // Tombol "Kembali ke Laporan" pada halaman cetak, dengan periode yang sama
+            'urlKembali' => route('owner.laporan', [
+                'dari'   => $dari->toDateString(),
+                'sampai' => $sampai->toDateString(),
+                'top'    => $top,
+            ]),
             'label'    => $this->labelPeriode($dari, $sampai),
             'top'      => $top,
             'ringkas'  => $data['ringkas'],
