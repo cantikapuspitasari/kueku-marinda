@@ -15,6 +15,13 @@
 @endphp
 
 @section('isi')
+@if (($stat['transfer_menunggu'] ?? 0) > 0)
+  <a href="{{ route('admin.transfer.index') }}" class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-amber-50 border border-amber-200 hover:border-amber-400 transition">
+    <span class="text-sm font-semibold text-amber-900">{{ $stat['transfer_menunggu'] }} bukti Transfer Bank menunggu verifikasi Anda</span>
+    <span class="text-xs font-bold text-maroon">Periksa sekarang &rarr;</span>
+  </a>
+@endif
+
 <!-- Statistik -->
 <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
   <div class="bg-white rounded-2xl p-6 border border-warm shadow-sm hover:shadow-md transition flex flex-col justify-between">

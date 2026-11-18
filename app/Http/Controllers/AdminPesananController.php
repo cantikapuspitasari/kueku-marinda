@@ -44,6 +44,11 @@ class AdminPesananController extends Controller
         $p = DB::table('pesanan')->where('id_pesanan', $id)->first();
         abort_if(!$p, 404);
 
+        // QRIS / Transfer Bank yang belum LUNAS tidak boleh diproses lebih lanjut
+        if (in_array($p->metode_pembayaran ?? 'TUNAI', ['QRIS', 'TRANSFER'], true) && ($p->status_pembayaran ?? null) !== 'LUNAS') {
+            return back()->with('error', 'Pembayaran ' . ($p->metode_pembayaran === 'TRANSFER' ? 'Transfer Bank' : 'QRIS') . ' belum LUNAS, pesanan belum bisa diproses.');
+        }
+
         $pg   = DB::table('pengiriman')->where('id_pesanan', $id)->first();
         $next = TahapPesanan::berikutnya($p->status_pesanan, $p->jenis_pengambilan, $pg->status_pengiriman ?? null);
 

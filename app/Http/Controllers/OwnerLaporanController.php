@@ -58,7 +58,7 @@ class OwnerLaporanController extends Controller
         $selesai = DB::table('pesanan')
             ->whereBetween('tanggal_pesan', [$dari, $sampai])
             ->where('status_pesanan', 'SELESAI')
-            ->get(['id_pesanan', 'tanggal_pesan', 'total_harga']);
+            ->get(['id_pesanan', 'tanggal_pesan', 'total_harga', 'metode_pembayaran']);
 
         $totalPesanan = $selesai->count();
         $totalPendapatan = (int) round($selesai->sum('total_harga'));
@@ -72,7 +72,32 @@ class OwnerLaporanController extends Controller
             ->where('status_pesanan', 'SELESAI')->sum('total_harga'));
         $pertumbuhan = $totalLalu > 0 ? (int) round((($totalPendapatan - $totalLalu) / $totalLalu) * 100) : null;
 
+        // Rincian per metode pembayaran (pesanan SELESAI = sudah lunas)
+        $perMetode = [];
+        foreach (\App\Models\Pesanan::METODE_PEMBAYARAN as $kode => $label) {
+            $grup = $selesai->where('metode_pembayaran', $kode);
+            $perMetode[] = [
+                'label'   => $label,
+                'pesanan' => $grup->count(),
+                'total'   => (int) round($grup->sum('total_harga')),
+            ];
+        }
+
+        // Transfer Bank yang masih menunggu verifikasi / ditolak (belum dihitung sebagai pendapatan)
+        $transferBelumLunas = DB::table('pesanan')
+            ->whereBetween('tanggal_pesan', [$dari, $sampai])
+            ->where('metode_pembayaran', 'TRANSFER')
+            ->where('status_pesanan', '!=', 'DIBATALKAN')
+            ->where('status_pembayaran', '!=', 'LUNAS')
+            ->selectRaw('COUNT(*) as jumlah, COALESCE(SUM(total_harga), 0) as total')
+            ->first();
+
         $ringkas = [
+            'per_metode'  => $perMetode,
+            'transfer_belum_lunas' => [
+                'pesanan' => (int) ($transferBelumLunas->jumlah ?? 0),
+                'total'   => (int) round($transferBelumLunas->total ?? 0),
+            ],
             'pesanan'     => $totalPesanan,
             'pendapatan'  => $totalPendapatan,
             'rata'        => $totalPesanan > 0 ? (int) round($totalPendapatan / $totalPesanan) : 0,
@@ -101,11 +126,16 @@ class OwnerLaporanController extends Controller
             ->leftJoin('pembeli as b', 'b.id_pembeli', '=', 'p.id_pembeli')
             ->whereBetween('p.tanggal_pesan', [$dari, $sampai])
             ->orderBy('p.tanggal_pesan')->orderBy('p.id_pesanan')
-            ->get(['p.tanggal_pesan', 'p.kode_pesanan', 'b.nama as pelanggan', 'p.jenis_pengambilan', 'p.status_pesanan', 'p.total_harga'])
+            ->get(['p.tanggal_pesan', 'p.kode_pesanan', 'b.nama as pelanggan', 'p.jenis_pengambilan', 'p.status_pesanan', 'p.total_harga', 'p.metode_pembayaran', 'p.status_pembayaran', 'p.bank_tujuan'])
             ->map(function ($r) {
                 $r->tanggal_fmt = Carbon::parse($r->tanggal_pesan)->format('d-m-Y H:i');
                 $r->jenis_fmt   = self::JENIS[$r->jenis_pengambilan] ?? $r->jenis_pengambilan;
                 $r->status_fmt  = self::STATUS[$r->status_pesanan] ?? $r->status_pesanan;
+                $r->metode_fmt  = (\App\Models\Pesanan::METODE_PEMBAYARAN[$r->metode_pembayaran ?? 'TUNAI'] ?? $r->metode_pembayaran)
+                    . (($r->metode_pembayaran ?? '') === 'TRANSFER' && $r->bank_tujuan ? ' ' . $r->bank_tujuan : '');
+                $r->bayar_fmt   = ($r->metode_pembayaran ?? 'TUNAI') === 'TUNAI'
+                    ? ($r->status_pesanan === 'SELESAI' ? 'Lunas' : '-')
+                    : (\App\Models\Pesanan::STATUS_PEMBAYARAN[$r->status_pembayaran ?? 'BELUM_BAYAR'] ?? '-');
                 return $r;
             });
 

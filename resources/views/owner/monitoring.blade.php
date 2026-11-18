@@ -126,6 +126,7 @@
         <div>
           <span class="text-[11px] font-bold text-maroon uppercase tracking-wider">Detail Pesanan</span>
           <h3 class="text-xl font-bold font-serif text-stone-900 mt-0.5">{{ $p->kode_pesanan }}</h3>
+          <div class="mt-1">@include('partials.badge-bayar', ['p' => $p])</div>
         </div>
         <div class="flex items-center gap-3">
           <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold border {{ $st[1] }}">{{ $st[0] }}</span>

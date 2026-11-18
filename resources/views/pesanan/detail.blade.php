@@ -223,6 +223,14 @@ let mode = order && order.mode === "toko" ? "toko" : "kurir";
    Nanti bisa diisi dari database (status_pesanan) supaya timeline ikut berubah. */
 let CURRENT = -1;
 let STATE = "menunggu"; // menunggu | ok | batal
+let METODE = "TUNAI", LUNAS = false, STATUS_BAYAR = "BELUM_BAYAR"; // metode pembayaran dari database
+const NAMA_STATUS_BAYAR = { BELUM_BAYAR: "belum dibayar", MENUNGGU_VERIFIKASI: "menunggu verifikasi", DITOLAK: "bukti ditolak, unggah ulang", LUNAS: "LUNAS" };
+// Keterangan di samping total: Tunai / QRIS / Transfer Bank
+function ketMetode(tunai) {
+  if (METODE === "QRIS") return "QRIS - " + (LUNAS ? "LUNAS" : "belum dibayar");
+  if (METODE === "TRANSFER") return "Transfer Bank - " + (LUNAS ? "LUNAS" : (NAMA_STATUS_BAYAR[STATUS_BAYAR] || "belum dibayar"));
+  return tunai;
+}
 
 const STEPS = {
   kurir: [
@@ -242,7 +250,15 @@ const STEPS = {
 };
 
 function renderTimeline() {
-  const steps = STEPS[mode];
+  const steps = STEPS[mode].map(function (s, i, arr) {
+    if (METODE !== "TUNAI" && i === arr.length - 1) {
+      const nama = METODE === "TRANSFER" ? "Transfer Bank" : "QRIS";
+      return Object.assign({}, s, { desc: mode === "kurir"
+        ? "Pesanan dibayar lewat " + nama + ". Terima pesanan dari kurir."
+        : "Pesanan dibayar lewat " + nama + ". Tunjukkan Nomor Pesanan kepada kasir saat mengambil." });
+    }
+    return s;
+  });
   let html = "";
   steps.forEach((s, i) => {
     const done = i < CURRENT, active = i === CURRENT, last = i === steps.length - 1;
@@ -312,12 +328,12 @@ function renderOrder() {
     document.getElementById("ship-label").textContent = "Ongkos Kirim";
     shipEl.textContent = rp(ship);
     shipEl.className = "font-semibold text-neutral-900";
-    document.getElementById("pay-method").textContent = "Total Pembayaran (CASH / COD)";
+    document.getElementById("pay-method").textContent = "Total Pembayaran (" + ketMetode("CASH / COD") + ")";
   } else {
     document.getElementById("ship-label").textContent = "Biaya Pengambilan";
     shipEl.textContent = "GRATIS";
     shipEl.className = "text-emerald-700 font-semibold";
-    document.getElementById("pay-method").textContent = "Total Pembayaran (Bayar di Toko)";
+    document.getElementById("pay-method").textContent = "Total Pembayaran (" + ketMetode("Bayar di Toko") + ")";
   }
   document.getElementById("sum-sub").textContent = rp(sub);
   document.getElementById("sum-total").textContent = rp(sub + ship);
@@ -348,6 +364,7 @@ async function muatStatus() {
     const data = await res.json();
     mode = data.mode === "toko" ? "toko" : "kurir";
     order = { no: "#" + data.kode, cart: data.cart || {}, mode: mode, ongkir: data.ongkir };
+    METODE = data.metode || "TUNAI"; LUNAS = !!data.lunas; STATUS_BAYAR = data.status_bayar || "BELUM_BAYAR";
     STATE = data.state;
     CURRENT = data.tahap;
     renderTimeline();

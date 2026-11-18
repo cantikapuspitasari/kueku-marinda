@@ -25,6 +25,9 @@ use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\StaffAkunController;
 use App\Http\Controllers\KurirController;
 use App\Http\Controllers\StrukController;
+use App\Http\Controllers\QrisController;
+use App\Http\Controllers\TransferController;
+use App\Http\Controllers\AdminTransferController;
 
 // ---------- Halaman utama ----------
 Route::get('/', function () {
@@ -113,6 +116,25 @@ Route::middleware('auth:pembeli')->group(function () {
     Route::get('pesanan/{idPesanan}/pembayaran', [PembayaranController::class, 'show'])
         ->name('pembayaran.show');
 
+    // Pembayaran QRIS (simulasi): halaman QR Code dan pengecekan status
+    Route::get('pembayaran/qris/{id}', [QrisController::class, 'bayar'])
+        ->whereNumber('id')
+        ->name('qris.bayar');
+
+    Route::get('pembayaran/qris/{id}/status', [QrisController::class, 'status'])
+        ->whereNumber('id')
+        ->name('qris.status');
+
+    // Pembayaran Transfer Bank (simulasi): rekening tujuan + unggah bukti
+    Route::get('pembayaran/transfer/{id}', [TransferController::class, 'bayar'])
+        ->whereNumber('id')
+        ->name('transfer.bayar');
+
+    Route::post('pembayaran/transfer/{id}/bukti', [TransferController::class, 'unggah'])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1')
+        ->name('transfer.unggah');
+
     // Pesanan Saya dan Profil
     Route::get('pesanan-saya', [PelangganController::class, 'pesanan'])
         ->name('pesanan.saya');
@@ -139,6 +161,22 @@ Route::middleware('auth:pembeli')->group(function () {
         ->name('profil.alamat.destroy');
 });
 
+// ---------- Simulasi QRIS (dibuka dari HP setelah scan QR Code) ----------
+// Tanpa login karena dibuka dari perangkat lain. Dilindungi URL bertanda tangan
+// (signed URL) yang unik per pesanan dan berlaku terbatas.
+Route::middleware('throttle:30,1')->group(function () {
+
+    Route::get('qris/bayar/{id}', [QrisController::class, 'simulasi'])
+        ->whereNumber('id')
+        ->middleware('signed')
+        ->name('qris.simulasi');
+
+    Route::post('qris/bayar/{id}/konfirmasi', [QrisController::class, 'konfirmasi'])
+        ->whereNumber('id')
+        ->middleware('signed')
+        ->name('qris.konfirmasi');
+});
+
 // ---------- Struk Pembelian ----------
 // Dibuka staf (admin / owner / kurir) atau pembeli pemilik pesanan.
 // Hak akses per pesanan dicek di StrukController.
@@ -146,6 +184,11 @@ Route::middleware('auth:web,pembeli')->group(function () {
 
     Route::get('pesanan/{idPesanan}/struk', [StrukController::class, 'show'])
         ->name('pesanan.struk');
+
+    // File bukti transfer (hak akses dicek di TransferController: Admin/Owner atau pemilik pesanan)
+    Route::get('pembayaran/transfer/bukti/{idBukti}', [TransferController::class, 'bukti'])
+        ->whereNumber('idBukti')
+        ->name('transfer.bukti');
 });
 
 // ---------- Akun Staf ----------
@@ -207,6 +250,22 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 
     Route::patch('admin/pesanan/{id}/maju', [AdminPesananController::class, 'maju'])
         ->name('admin.pesanan.maju');
+
+    // Verifikasi Pembayaran Transfer Bank
+    Route::get('admin/transfer', [AdminTransferController::class, 'index'])
+        ->name('admin.transfer.index');
+
+    Route::get('admin/transfer/{idPesanan}', [AdminTransferController::class, 'show'])
+        ->whereNumber('idPesanan')
+        ->name('admin.transfer.show');
+
+    Route::post('admin/transfer/bukti/{idBukti}/terima', [AdminTransferController::class, 'terima'])
+        ->whereNumber('idBukti')
+        ->name('admin.transfer.terima');
+
+    Route::post('admin/transfer/bukti/{idBukti}/tolak', [AdminTransferController::class, 'tolak'])
+        ->whereNumber('idBukti')
+        ->name('admin.transfer.tolak');
 
     // Kelola Produk Admin
     Route::get('admin/produk', [AdminProdukController::class, 'index'])

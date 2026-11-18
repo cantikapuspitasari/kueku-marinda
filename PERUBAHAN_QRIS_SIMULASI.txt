@@ -1,0 +1,36 @@
+PEMBAYARAN QRIS (SIMULASI) - KUEKU MARINDA
+===========================================
+
+PASANG (urut)
+1. Extract zip ke folder proyek, timpa file yang sama.
+2. phpMyAdmin > database kuekumarinda_db > tab SQL > tempel isi database/qris_simulasi.sql > Go.
+3. Tambahkan di file .env (ganti IP dengan IP laptop kamu, lihat bagian IP di bawah):
+      QRIS_BASE_URL=http://192.168.1.10:8000
+4. php artisan optimize:clear
+5. Jalankan server agar bisa diakses HP:
+      php artisan serve --host=0.0.0.0 --port=8000
+   (XAMPP/Apache: cukup start Apache, lalu QRIS_BASE_URL=http://IP-LAPTOP/nama-folder-public)
+
+MENCARI IP LAPTOP
+   Windows: buka CMD > ipconfig > "IPv4 Address" pada adaptor WiFi (mis. 192.168.1.10)
+   HP dan laptop harus tersambung ke WiFi yang SAMA.
+   Bila HP tidak bisa membuka: izinkan php/Apache di Windows Firewall (Private network).
+
+FILE BARU
+   app/Http/Controllers/QrisController.php
+   resources/views/qris/bayar.blade.php      (halaman QR Code untuk pembeli)
+   resources/views/qris/simulasi.blade.php   (halaman yang terbuka di HP setelah scan)
+   public/js/qrcode-kueku.js                 (pembuat QR Code, tanpa internet/CDN)
+   database/qris_simulasi.sql
+
+FILE DIUBAH
+   routes/web.php                                  4 route QRIS
+   app/Models/Pesanan.php                          metode TUNAI/QRIS, status_pembayaran, sudahDibayar()
+   app/Http/Requests/StorePesananRequest.php       validasi metode_pembayaran wajib (TUNAI/QRIS)
+   app/Http/Controllers/PesananController.php      simpan metode, arahkan QRIS ke halaman QR
+   app/Http/Controllers/PembayaranController.php   tunai tetap; QRIS ditolak dicatat staf
+   app/Http/Controllers/PengirimanController.php   "terkirim" juga mengenali QRIS LUNAS
+   app/Http/Controllers/StrukController.php        struk QRIS
+   app/Http/Controllers/KurirController.php, PelangganController.php, LacakController.php
+   resources/views/checkout/index.blade.php        pilihan Tunai / QRIS
+   resources/views/struk/show.blade.php, kurir/pesanan, admin/pesanan, pelanggan/pesanan, pesanan/detail

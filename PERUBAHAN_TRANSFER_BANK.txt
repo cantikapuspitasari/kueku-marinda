@@ -1,0 +1,78 @@
+KUEKU MARINDA - TRANSFER BANK (SIMULASI) + TUNAI + QRIS
+=========================================================
+
+CARA PASANG
+1. Extract zip ini ke folder project (timpa file yang sama). Cukup extract, tidak ada file yang harus dihapus.
+2. Database (pilih SALAH SATU):
+   a) phpMyAdmin -> pilih kuekumarinda_db -> tab SQL -> tempel isi database/transfer_bank.sql -> Go
+      (aman diulang, aman walau QRIS SQL lama belum/ sudah dijalankan)
+   b) atau: php artisan migrate   (isi sama; jangan dipakai bersamaan dengan a)
+3. php artisan optimize:clear
+4. Jalankan seperti biasa: php artisan serve --host=0.0.0.0 --port=8000
+   Tidak perlu php artisan storage:link. Bukti transfer disimpan PRIVAT di storage/app/private/bukti-transfer
+   (tidak bisa dibuka lewat URL langsung).
+
+ALUR TRANSFER BANK
+Pembeli : checkout -> pilih Transfer Bank -> pilih bank (BCA/BRI/BNI/Mandiri) -> Lanjut ke Pembayaran
+          -> halaman rekening (nomor rekening SIMULASI + tombol Salin, kode pesanan, total)
+          -> unggah bukti (JPG/PNG maks 2 MB) -> status MENUNGGU VERIFIKASI
+Admin   : menu "Pembayaran Transfer" -> Periksa -> lihat bukti + nominal -> Terima (LUNAS) / Tolak (wajib alasan)
+Ditolak : pembeli melihat alasan di Pesanan Saya dan halaman transfer, lalu unggah ulang
+Setelah LUNAS: Admin baru bisa menekan Verifikasi pesanan (PENDING -> DIKONFIRMASI) dan seterusnya.
+
+REKENING SIMULASI (bukan rekening sungguhan; ubah di app/Models/Pesanan.php -> BANK_TRANSFER)
+BCA 8888 0011 2233 | BRI 8888 0044 5566 | BNI 8888 0077 8899 | Mandiri 8888 0099 0011
+a.n. KUEKU MARINDA (SIMULASI)
+
+FILE BARU
+database/transfer_bank.sql                          SQL phpMyAdmin (kolom + tabel bukti_transfer)
+database/migrations/2026_11_18_000001_add_transfer_bank_payment.php   migration (idempoten)
+app/Models/BuktiTransfer.php
+app/Http/Controllers/TransferController.php         halaman pembeli, unggah, tampil file bukti (cek hak akses)
+app/Http/Controllers/AdminTransferController.php   daftar, detail, terima, tolak
+resources/views/transfer/bayar.blade.php            halaman pembeli
+resources/views/admin/transfer/index.blade.php      daftar transfer Admin
+resources/views/admin/transfer/show.blade.php       detail + terima/tolak
+resources/views/partials/badge-bayar.blade.php      lencana metode/status (dashboard & monitoring Owner)
+
+FILE DIUBAH
+app/Models/Pesanan.php                  metode TRANSFER, BANK_TRANSFER, STATUS_PEMBAYARAN, isTransfer/isNonTunai/statusBayar/bisaUnggahBukti, scope terhitungOmzet
+app/Http/Requests/StorePesananRequest.php   bank_tujuan wajib bila TRANSFER
+app/Http/Controllers/PesananController.php  simpan bank_tujuan, redirect ke halaman transfer, DIKONFIRMASI butuh LUNAS untuk QRIS & Transfer
+app/Http/Controllers/AdminPesananController.php   maju: QRIS/Transfer belum LUNAS ditolak
+app/Http/Controllers/PembayaranController.php     tunai: pesanan Transfer ditolak (tidak bisa dicatat tunai)
+app/Http/Controllers/StrukController.php + views/struk/show.blade.php   struk Transfer (bank, status; belum verifikasi tidak ditulis lunas)
+app/Http/Controllers/PelangganController.php, LacakController.php    status bayar + alasan penolakan
+app/Http/Controllers/AdminDashboardController.php, OwnerDashboardController.php   pendapatan hanya yang LUNAS; info transfer menunggu
+app/Http/Controllers/OwnerLaporanController.php + views owner/laporan*.blade.php  kolom metode/status bayar + pendapatan per metode
+app/Http/Controllers/PengirimanController.php     pesan error
+routes/web.php
+views: checkout/index, pelanggan/pesanan, pesanan/detail, admin/pesanan, admin/dashboard, admin/_sidebar, partials/staff-mobile,
+       kurir/pesanan, owner/dashboard, owner/monitoring
+database/qris_simulasi.sql              diganti catatan (sudah digabung ke transfer_bank.sql)
+
+TIDAK DIUBAH: seluruh alur QRIS (QrisController, qris/*.blade.php, js/qrcode-kueku.js) dan alur tunai.
+
+KEAMANAN UPLOAD
+- Hanya JPG/PNG (isi file diperiksa, bukan hanya ekstensi), maks 2 MB
+- Nama file diacak server, disimpan di disk privat, tidak bisa diakses lewat URL publik
+- File hanya dibuka lewat route berhak akses: Admin/Owner atau pembeli pemilik pesanan
+- Unggah dibatasi 10x/menit, ganda saat menunggu verifikasi ditolak (transaksi + lock)
+- Terima/tolak hanya Admin, hanya bukti terbaru berstatus MENUNGGU, POST + CSRF, nominal dicek ulang di server
+
+CHECKLIST UJI
+A. TUNAI (tidak boleh berubah)
+ 1. Checkout pilih Tunai -> halaman "Pesanan Terkonfirmasi"
+ 2. Admin: Verifikasi -> Input Pembayaran (pickup) / kurir input (delivery) -> SELESAI
+B. QRIS
+ 1. Checkout pilih QRIS -> QR muncul -> scan HP -> Bayar Sekarang -> LUNAS otomatis di laptop
+C. TRANSFER
+ 1. Checkout pilih Transfer Bank tanpa memilih bank -> muncul pesan "Pilih bank tujuan"
+ 2. Pilih BCA -> halaman rekening, tombol Salin menyalin 8888001122 33
+ 3. Unggah file .pdf / .txt / >2 MB -> ditolak dengan pesan
+ 4. Unggah JPG -> status MENUNGGU VERIFIKASI; Pesanan Saya menampilkan status yang sama
+ 5. Admin: tombol Verifikasi pesanan nonaktif; menu Pembayaran Transfer menampilkan 1 menunggu
+ 6. Admin Tolak tanpa alasan -> ditolak; dengan alasan -> pembeli melihat alasan, bisa unggah ulang
+ 7. Unggah ulang -> Admin Terima -> LUNAS -> Verifikasi pesanan aktif -> proses sampai SELESAI
+ 8. Struk: Transfer BCA, Status LUNAS (sebelum Terima tertulis MENUNGGU VERIFIKASI, bukan lunas)
+ 9. Owner: dashboard omzet hanya menghitung yang LUNAS; laporan ada kolom Metode & Pembayaran serta tabel per metode

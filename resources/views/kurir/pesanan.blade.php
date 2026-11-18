@@ -60,7 +60,12 @@
       $wa = $nomorWa($t->telepon);
       $sedangAntar = $t->status_pengiriman === 'DIANTAR';
       $selesai = $t->status_pengiriman === 'TERKIRIM';
-      $sudahBayar = ! is_null($t->id_pembayaran);
+      $metode = $t->metode_pembayaran ?? 'TUNAI';
+      // QRIS dan Transfer Bank dibayar pembeli sendiri (kurir tidak menerima uang tunai)
+      $qris = $metode !== 'TUNAI';
+      $labelMetode = \App\Models\Pesanan::METODE_PEMBAYARAN[$metode] ?? $metode;
+      // Tunai: ada catatan pembayaran. QRIS: status pembayaran LUNAS (dibayar pembeli lewat scan QR)
+      $sudahBayar = ! is_null($t->id_pembayaran) || $t->status_pembayaran === 'LUNAS';
     @endphp
     <div id="panel-{{ $t->id_pesanan }}" class="panel-detail hidden bg-white rounded-2xl border border-warm shadow-sm p-6 space-y-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -113,17 +118,17 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-start gap-3">
               <span class="w-8 h-8 rounded-full border {{ $selesai ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'border-stone-300 text-stone-500' }} flex items-center justify-center text-sm font-semibold shrink-0">{{ $selesai ? '✓' : '3' }}</span>
-              <div><h4 class="font-bold text-stone-900 text-sm">Serahkan Pesanan &amp; Terima Pembayaran Cash</h4><p class="text-xs text-stone-500">Input uang yang diberikan pelanggan, lalu update status jadi "selesai" setelah pesanan diterima.</p></div>
+              <div><h4 class="font-bold text-stone-900 text-sm">{{ $qris ? 'Serahkan Pesanan (Pembayaran ' . $labelMetode . ')' : 'Serahkan Pesanan &amp; Terima Pembayaran Cash' }}</h4><p class="text-xs text-stone-500">{{ $qris ? ($sudahBayar ? 'Pembayaran sudah LUNAS lewat ' . $labelMetode . '. Serahkan pesanan, lalu update status jadi "selesai".' : 'Menunggu pembayaran ' . $labelMetode . ' LUNAS. Update status baru bisa setelah LUNAS.') : 'Input uang yang diberikan pelanggan, lalu update status jadi "selesai" setelah pesanan diterima.' }}</p></div>
             </div>
             @if ($selesai)
               <span class="text-xs font-semibold text-emerald-700">Selesai</span>
             @elseif ($sedangAntar && $sudahBayar)
-              <form method="POST" action="{{ route('pengiriman.tandaiTerkirim', $t->id_pesanan) }}" onsubmit="return confirm('Pesanan sudah diterima pelanggan dan dibayar tunai?')">
+              <form method="POST" action="{{ route('pengiriman.tandaiTerkirim', $t->id_pesanan) }}" onsubmit="return confirm('Pesanan sudah diterima pelanggan dan pembayaran sudah diterima?')">
                 @csrf @method('PATCH')
                 <button type="submit" class="px-5 py-2 rounded-xl border border-maroon text-maroon hover:bg-maroon-light text-xs font-semibold transition">Update Status: Selesai</button>
               </form>
             @elseif ($sedangAntar)
-              <span class="text-xs text-stone-500">Catat pembayaran dulu</span>
+              <span class="text-xs text-stone-500">{{ $qris ? 'Menunggu pembayaran ' . $labelMetode : 'Catat pembayaran dulu' }}</span>
             @else
               <span class="text-xs text-stone-400">Aktif setelah "Di Perjalanan"</span>
             @endif
@@ -133,11 +138,16 @@
             {{-- Pembayaran sudah tercatat --}}
             <div class="rounded-xl bg-[#FBF9F5] border border-warm px-4 py-3 text-sm space-y-1">
               <div class="flex justify-between"><span class="text-stone-500">Total pembayaran</span><span class="font-semibold text-stone-900">Rp {{ number_format($t->total_harga, 0, ',', '.') }}</span></div>
-              <div class="flex justify-between"><span class="text-stone-500">Uang diterima</span><span class="font-semibold text-stone-900">Rp {{ number_format($t->uang_diterima, 0, ',', '.') }}</span></div>
-              <div class="flex justify-between"><span class="text-stone-500">Kembalian</span><span class="font-bold text-maroon">Rp {{ number_format($t->kembalian, 0, ',', '.') }}</span></div>
+              @if (! $qris)
+                <div class="flex justify-between"><span class="text-stone-500">Uang diterima</span><span class="font-semibold text-stone-900">Rp {{ number_format($t->uang_diterima, 0, ',', '.') }}</span></div>
+                <div class="flex justify-between"><span class="text-stone-500">Kembalian</span><span class="font-bold text-maroon">Rp {{ number_format($t->kembalian, 0, ',', '.') }}</span></div>
+              @else
+                <div class="flex justify-between"><span class="text-stone-500">Metode</span><span class="font-semibold text-stone-900">{{ $labelMetode }}</span></div>
+                <div class="flex justify-between"><span class="text-stone-500">Status pembayaran</span><span class="font-bold text-emerald-700">LUNAS</span></div>
+              @endif
               <a href="{{ route('pesanan.struk', $t->id_pesanan) }}" target="_blank" class="inline-block pt-1 text-xs font-semibold text-maroon hover:underline">Lihat Struk</a>
             </div>
-          @elseif ($sedangAntar)
+          @elseif ($sedangAntar && ! $qris)
             {{-- Kurir menginput uang yang diberikan pelanggan --}}
             <form method="POST" action="{{ route('pembayaran.store', $t->id_pesanan) }}" data-bayar data-total="{{ (int) round($t->total_harga) }}" autocomplete="off" class="rounded-xl border border-warm p-4 space-y-3">
               @csrf
@@ -159,6 +169,11 @@
 
               <button type="submit" data-bayar-submit disabled class="px-5 py-2 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">Simpan Pembayaran</button>
             </form>
+          @elseif ($sedangAntar)
+            {{-- QRIS belum dibayar: kurir tidak menerima uang, tunggu LUNAS dari pembeli --}}
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Pembayaran {{ $labelMetode }} belum LUNAS. @if ($metode === 'TRANSFER') Pembeli perlu mengunggah bukti transfer dan menunggu verifikasi admin. @else Minta pembeli menyelesaikan pembayaran lewat scan QR Code di akunnya. @endif Jangan menerima uang tunai.
+            </div>
           @endif
         </li>
       </ol>

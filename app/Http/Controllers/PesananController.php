@@ -259,6 +259,11 @@ class PesananController extends Controller
                     'tanggal_ambil' => $validated['tanggal_ambil'],
                     'jam_ambil' => $validated['jam_ambil'],
                     'jenis_pengambilan' => $validated['jenis_pengambilan'],
+                    'metode_pembayaran' => $validated['metode_pembayaran'],
+                    // Bank tujuan hanya disimpan untuk Transfer Bank
+                    'bank_tujuan' => $validated['metode_pembayaran'] === 'TRANSFER'
+                        ? ($validated['bank_tujuan'] ?? null)
+                        : null,
                     'status_pesanan' => 'PENDING',
                     'total_harga' => $totalHarga,
                 ]);
@@ -294,7 +299,24 @@ class PesananController extends Controller
                     'id_pesanan' => $pesanan->id_pesanan,
                     'kode_pesanan' => $pesanan->kode_pesanan,
                     'total_harga' => (float) $pesanan->total_harga,
+                    'metode_pembayaran' => $pesanan->metode_pembayaran,
+                    // QRIS: pembeli diarahkan ke halaman QR Code untuk membayar
+                    'qris_url' => $pesanan->isQris()
+                        ? route('qris.bayar', $pesanan->id_pesanan)
+                        : null,
+                    // Transfer Bank: pembeli diarahkan ke halaman rekening & unggah bukti
+                    'transfer_url' => $pesanan->isTransfer()
+                        ? route('transfer.bayar', $pesanan->id_pesanan)
+                        : null,
                 ]);
+            }
+
+            if ($pesanan->isQris()) {
+                return redirect()->route('qris.bayar', $pesanan->id_pesanan);
+            }
+
+            if ($pesanan->isTransfer()) {
+                return redirect()->route('transfer.bayar', $pesanan->id_pesanan);
             }
 
             return redirect()
@@ -450,10 +472,24 @@ class PesananController extends Controller
                     );
                 }
 
+                // QRIS / Transfer Bank: pesanan baru boleh diverifikasi setelah pembayaran LUNAS
+                // (Transfer: LUNAS hanya setelah Admin menerima bukti transfer)
+                if (
+                    $baru === 'DIKONFIRMASI' &&
+                    $pesanan->isNonTunai() &&
+                    $pesanan->status_pembayaran !== 'LUNAS'
+                ) {
+                    throw new \DomainException(
+                        $pesanan->isTransfer()
+                            ? 'Pembayaran Transfer Bank belum LUNAS. Verifikasi bukti transfer di menu Pembayaran Transfer terlebih dahulu.'
+                            : 'Pembayaran QRIS belum LUNAS. Tunggu pembeli menyelesaikan pembayaran.'
+                    );
+                }
+
                 // Pesanan harus memiliki pembayaran sebelum selesai
                 if (
                     $baru === 'SELESAI' &&
-                    !$pesanan->pembayaran()->exists()
+                    !$pesanan->sudahDibayar()
                 ) {
                     throw new \DomainException(
                         'Catat pembayaran terlebih dahulu sebelum menyelesaikan pesanan.'
@@ -462,7 +498,7 @@ class PesananController extends Controller
 
                 if ($baru === 'DIBATALKAN') {
                     // Pesanan yang sudah dibayar tidak boleh dibatalkan
-                    if ($pesanan->pembayaran()->exists()) {
+                    if ($pesanan->sudahDibayar()) {
                         throw new \DomainException(
                             'Pesanan yang sudah dibayar tidak bisa dibatalkan.'
                         );

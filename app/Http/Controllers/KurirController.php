@@ -51,7 +51,7 @@ class KurirController extends Controller
             ->orderByRaw("FIELD(g.status_pengiriman, 'DIANTAR', 'DIAMBIL_KURIR', 'MENUNGGU', 'TERKIRIM')")
             ->orderBy('g.id_pengiriman')
             ->get([
-                'g.status_pengiriman', 'p.id_pesanan', 'p.kode_pesanan', 'p.total_harga', 'p.tanggal_ambil',
+                'g.status_pengiriman', 'p.id_pesanan', 'p.kode_pesanan', 'p.total_harga', 'p.metode_pembayaran', 'p.status_pembayaran', 'p.tanggal_ambil',
                 'b.nama as pelanggan', DB::raw("COALESCE(NULLIF(b.no_telepon, ''), u.no_telepon) as telepon"), 'a.alamat_lengkap', 'a.kota',
                 // Pembayaran tunai (null = belum dicatat). Data lama tanpa uang_diterima dianggap uang pas.
                 'y.id_pembayaran',

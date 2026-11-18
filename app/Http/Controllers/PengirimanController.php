@@ -146,9 +146,9 @@ class PengirimanController extends Controller
                     );
                 }
 
-                if (!$pesanan->pembayaran()->exists()) {
+                if (!$pesanan->sudahDibayar()) {
                     throw new \DomainException(
-                        'Catat pembayaran dulu sebelum menandai terkirim'
+                        'Pembayaran belum tercatat (tunai belum dicatat, atau QRIS/Transfer Bank belum LUNAS)'
                     );
                 }
 

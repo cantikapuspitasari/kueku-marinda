@@ -44,7 +44,17 @@ class PelangganController extends Controller
         // Data pembayaran tunai yang tersimpan (uang diterima & kembalian)
         $bayar = DB::table('pembayaran')->whereIn('id_pesanan', $ids)->get()->keyBy('id_pesanan');
 
-        $daftar = $pesanan->map(function ($p) use ($item, $kirim, $bayar) {
+        // Alasan penolakan bukti transfer terbaru (ditampilkan ke pembeli)
+        $ditolak = \Illuminate\Support\Facades\Schema::hasTable('bukti_transfer')
+            ? DB::table('bukti_transfer')
+                ->whereIn('id_pesanan', $ids)
+                ->where('status', 'DITOLAK')
+                ->orderBy('id_bukti')
+                ->get()
+                ->keyBy('id_pesanan')
+            : collect();
+
+        $daftar = $pesanan->map(function ($p) use ($item, $kirim, $bayar, $ditolak) {
             $h = TahapPesanan::hitung($p->status_pesanan, $p->jenis_pengambilan, $kirim[$p->id_pesanan]->status_pengiriman ?? null);
             $label = match ($h['state']) {
                 'batal'    => 'Dibatalkan',
@@ -58,6 +68,11 @@ class PelangganController extends Controller
                 'tanggal'=> $p->tanggal_pesan,
                 'jenis'  => $p->jenis_pengambilan,
                 'total'  => $p->total_harga,
+                'metode' => $p->metode_pembayaran ?? 'TUNAI',
+                'lunas'  => $p->status_pembayaran === 'LUNAS',
+                'bank'   => $p->bank_tujuan ?? null,
+                'status_bayar' => $p->status_pembayaran ?: 'BELUM_BAYAR',
+                'alasan_tolak' => ($p->status_pembayaran ?? null) === 'DITOLAK' ? ($ditolak[$p->id_pesanan]->catatan_admin ?? null) : null,
                 'state'  => $h['state'],
                 'tahap'  => $h['tahap'],
                 'label'  => $label,

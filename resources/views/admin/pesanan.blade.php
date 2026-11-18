@@ -95,6 +95,14 @@
               <span class="block text-[11px] text-stone-400 mt-0.5">
                 {{ \Carbon\Carbon::parse($p->tanggal_pesan)->format('d M Y, H:i') }}
               </span>
+              @if ($p->metode_pembayaran === 'QRIS')
+                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $p->status_pembayaran === 'LUNAS' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200' }}">QRIS &middot; {{ $p->status_pembayaran === 'LUNAS' ? 'LUNAS' : 'BELUM BAYAR' }}</span>
+              @elseif ($p->metode_pembayaran === 'TRANSFER')
+                @php $sbT = $p->statusBayar(); @endphp
+                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $sbT === 'LUNAS' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : ($sbT === 'DITOLAK' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-800 border-amber-200') }}">Transfer{{ $p->bank_tujuan ? ' ' . $p->bank_tujuan : '' }} &middot; {{ strtoupper(\App\Models\Pesanan::STATUS_PEMBAYARAN[$sbT] ?? $sbT) }}</span>
+              @else
+                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-stone-100 text-stone-700 border-stone-200">Tunai</span>
+              @endif
             </td>
 
             {{-- Jadwal Pengambilan --}}
@@ -279,6 +287,9 @@
         @endif
 
         @if ($p->status_pesanan === 'PENDING')
+          @php
+            $belumLunasNonTunai = in_array($p->metode_pembayaran, ['QRIS', 'TRANSFER'], true) && $p->status_pembayaran !== 'LUNAS';
+          @endphp
           <form method="POST" action="{{ $urlStatus }}" class="p-4 rounded-xl border border-warm flex flex-wrap items-center justify-between gap-3">
             @csrf
             @method('PATCH')
@@ -288,9 +299,18 @@
             <div>
               <h4 class="text-sm font-bold text-stone-900">Verifikasi Pesanan</h4>
               <p class="text-xs text-stone-500">Cek data pesanan sebelum diproses ke dapur.</p>
+              @if ($belumLunasNonTunai)
+                <p class="text-xs text-amber-700 font-medium mt-1">
+                  @if ($p->metode_pembayaran === 'TRANSFER')
+                    Menunggu pembayaran Transfer Bank LUNAS. Periksa bukti di menu <a href="{{ route('admin.transfer.show', $p->id_pesanan) }}" class="underline font-semibold">Pembayaran Transfer</a>.
+                  @else
+                    Menunggu pembeli menyelesaikan pembayaran QRIS.
+                  @endif
+                </p>
+              @endif
             </div>
 
-            <button type="submit" class="px-6 py-2.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-xs font-semibold shadow-sm transition">
+            <button type="submit" @disabled($belumLunasNonTunai) class="px-6 py-2.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-xs font-semibold shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed">
               Verifikasi
             </button>
           </form>
@@ -306,28 +326,46 @@
           ];
 
           $berikut = $alur[$p->status_pesanan] ?? [];
-          $sudahBayar = (bool) $p->pembayaran;
+          $qris = $p->metode_pembayaran === 'QRIS';
+          $transfer = $p->metode_pembayaran === 'TRANSFER';
+          $nonTunai = $qris || $transfer;
+          $sudahBayar = $p->status_pembayaran === 'LUNAS' || (bool) $p->pembayaran;
         @endphp
 
         @if (in_array($p->status_pesanan, ['DIKONFIRMASI', 'DIPROSES']))
           <div class="p-4 rounded-xl border border-warm flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 class="text-sm font-bold text-stone-900">Pembayaran</h4>
+              <h4 class="text-sm font-bold text-stone-900">Pembayaran &middot; {{ \App\Models\Pesanan::METODE_PEMBAYARAN[$p->metode_pembayaran ?? 'TUNAI'] ?? 'Tunai' }}</h4>
 
               @if ($sudahBayar)
                 <p class="text-xs text-emerald-700 font-medium">Sudah tercatat dibayar.</p>
                 <p class="text-xs text-stone-500 mt-0.5">
-                  Uang diterima Rp {{ number_format($p->pembayaran->uang_diterima ?? $p->pembayaran->jumlah_bayar, 0, ',', '.') }}
-                  &middot; Kembalian Rp {{ number_format($p->pembayaran->kembalian ?? 0, 0, ',', '.') }}
+                  @if ($nonTunai)
+                    LUNAS via {{ $qris ? 'QRIS' : 'Transfer Bank ' . $p->bank_tujuan }} &middot; Rp {{ number_format($p->total_harga, 0, ',', '.') }}
+                    @if ($p->waktu_bayar) &middot; {{ $p->waktu_bayar->format('d M Y, H:i') }} @endif
+                  @elseif ($p->pembayaran)
+                    Uang diterima Rp {{ number_format($p->pembayaran->uang_diterima ?? $p->pembayaran->jumlah_bayar, 0, ',', '.') }}
+                    &middot; Kembalian Rp {{ number_format($p->pembayaran->kembalian ?? 0, 0, ',', '.') }}
+                  @endif
                 </p>
               @else
                 <p class="text-xs text-stone-500">
-                  {{ $delivery ? 'Delivery dibayar tunai di alamat pembeli. Nominal uang diterima diinput oleh kurir yang mengantar.' : 'Pickup dibayar di toko. Input uang diterima di halaman struk; pesanan otomatis selesai setelah pembayaran disimpan.' }}
+                  @if ($qris)
+                    Menunggu pembeli membayar QRIS (BELUM LUNAS).
+                  @elseif ($transfer)
+                    Transfer Bank {{ $p->bank_tujuan }}: {{ strtoupper(\App\Models\Pesanan::STATUS_PEMBAYARAN[$p->statusBayar()] ?? '') }} (BELUM LUNAS).
+                  @else
+                    {{ $delivery ? 'Delivery dibayar tunai di alamat pembeli. Nominal uang diterima diinput oleh kurir yang mengantar.' : 'Pickup dibayar di toko. Input uang diterima di halaman struk; pesanan otomatis selesai setelah pembayaran disimpan.' }}
+                  @endif
                 </p>
               @endif
             </div>
 
-            @if (!$sudahBayar && !$delivery)
+            @if ($transfer && !$sudahBayar)
+              <a href="{{ route('admin.transfer.show', $p->id_pesanan) }}" class="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-semibold transition">Periksa Bukti Transfer</a>
+            @endif
+
+            @if (!$sudahBayar && !$delivery && !$nonTunai)
               <a href="{{ route('pesanan.struk', $p->id_pesanan) }}" target="_blank" class="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-semibold transition">
                 Input Pembayaran &amp; Struk
               </a>

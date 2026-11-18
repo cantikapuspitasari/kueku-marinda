@@ -1,0 +1,8 @@
+-- ============================================================
+-- Kueku Marinda - Pembayaran QRIS (simulasi)
+-- FILE INI SUDAH DIGABUNG ke database/transfer_bank.sql
+-- (kolom QRIS + kolom Transfer Bank dibuat sekaligus di sana).
+--
+-- Jalankan database/transfer_bank.sql saja. Jangan jalankan file ini lagi,
+-- karena isi lamanya membatasi metode hanya TUNAI/QRIS dan akan menolak data TRANSFER.
+-- ============================================================

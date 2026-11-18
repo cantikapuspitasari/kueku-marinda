@@ -39,6 +39,9 @@
             @if ($kode === 'pesanan' && isset($pesananBaru) && $pesananBaru > 0)
               <span class="absolute -top-1.5 -right-2.5 bg-maroon text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">{{ $pesananBaru }}</span>
             @endif
+            @if ($kode === 'transfer' && isset($transferMenunggu) && $transferMenunggu > 0)
+              <span class="absolute -top-1.5 -right-2.5 bg-maroon text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">{{ $transferMenunggu }}</span>
+            @endif
           </span>
           <span class="truncate max-w-full">{{ $label }}</span>
         </a>

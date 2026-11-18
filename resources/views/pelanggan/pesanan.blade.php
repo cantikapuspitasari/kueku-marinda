@@ -106,16 +106,30 @@
         <div>
           <span class="text-xs text-gray-400 block">Total Pembayaran</span>
           <span class="text-lg font-bold text-maroon">Rp {{ number_format($o->total, 0, ',', '.') }}</span>
+          <span class="text-xs text-gray-500 block mt-0.5">Metode: {{ \App\Models\Pesanan::METODE_PEMBAYARAN[$o->metode] ?? $o->metode }}@if ($o->metode === 'TRANSFER' && $o->bank) ({{ $o->bank }})@endif
+            @if ($o->metode === 'QRIS') &middot; <b class="{{ $o->lunas ? 'text-emerald-700' : 'text-amber-700' }}">{{ $o->lunas ? 'LUNAS' : 'Belum dibayar' }}</b>
+            @elseif ($o->metode === 'TRANSFER') &middot; <b class="{{ $o->lunas ? 'text-emerald-700' : ($o->status_bayar === 'DITOLAK' ? 'text-red-700' : 'text-amber-700') }}">{{ \App\Models\Pesanan::STATUS_PEMBAYARAN[$o->status_bayar] ?? $o->status_bayar }}</b>
+            @endif
+          </span>
+          @if ($o->metode === 'TRANSFER' && $o->status_bayar === 'DITOLAK' && $o->state !== 'batal')
+            <span class="text-xs text-red-700 block mt-1">Bukti transfer ditolak{{ $o->alasan_tolak ? ': ' . $o->alasan_tolak : '' }}. Silakan unggah ulang.</span>
+          @endif
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          @if ($o->bayar)
+          @if ($o->metode === 'QRIS' && ! $o->lunas && $o->state !== 'batal')
+            <a href="{{ route('qris.bayar', $o->id) }}" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition">Bayar dengan QRIS</a>
+          @endif
+          @if ($o->metode === 'TRANSFER' && ! $o->lunas && $o->state !== 'batal')
+            <a href="{{ route('transfer.bayar', $o->id) }}" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition">{{ $o->status_bayar === 'MENUNGGU_VERIFIKASI' ? 'Lihat Status Transfer' : ($o->status_bayar === 'DITOLAK' ? 'Unggah Ulang Bukti' : 'Bayar & Unggah Bukti') }}</a>
+          @endif
+          @if ($o->bayar || $o->lunas)
             <a href="{{ route('pesanan.struk', $o->id) }}" target="_blank" class="px-5 py-2.5 bg-white hover:bg-maroon-50 text-maroon border border-maroon/40 rounded-xl text-xs font-semibold transition">Lihat Struk</a>
           @endif
           <a href="{{ url('/pesanan/detail') }}?kode={{ urlencode($o->kode) }}" class="px-5 py-2.5 bg-maroon hover:bg-maroon-600 text-white rounded-xl text-xs font-semibold transition shadow-sm">Lihat Detail &amp; Lacak</a>
         </div>
       </div>
 
-      @if ($o->bayar)
+      @if ($o->bayar && $o->metode === 'TUNAI')
         <dl class="mt-3 grid grid-cols-2 gap-3 rounded-xl bg-cream border border-gray-100 px-4 py-3">
           <div>
             <dt class="text-xs text-gray-400">Uang diterima</dt>

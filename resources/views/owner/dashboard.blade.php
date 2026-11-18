@@ -15,6 +15,12 @@
 @endphp
 
 @section('isi')
+@if (($stat['transfer_menunggu'] ?? 0) > 0)
+  <div class="px-5 py-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm font-semibold text-amber-900">
+    {{ $stat['transfer_menunggu'] }} pembayaran Transfer Bank menunggu verifikasi Admin. Belum dihitung sebagai omzet sampai LUNAS.
+  </div>
+@endif
+
 <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
   <div class="bg-white rounded-2xl p-6 border border-warm shadow-sm hover:shadow-md transition">
     <div class="flex items-center justify-between">
@@ -121,7 +127,7 @@
             $st = $statusMap[$p->status_pesanan] ?? [$p->status_pesanan, 'bg-stone-100 text-stone-700 border-stone-200'];
           @endphp
           <tr class="hover:bg-stone-50/50 transition-colors">
-            <td class="py-4 px-6 font-bold text-stone-900 whitespace-nowrap">{{ $p->kode_pesanan }}</td>
+            <td class="py-4 px-6 font-bold text-stone-900 whitespace-nowrap">{{ $p->kode_pesanan }}<span class="block mt-1">@include('partials.badge-bayar', ['p' => $p])</span></td>
             <td class="py-4 px-6">
               <p class="font-bold text-stone-900">{{ $nama }}</p>
               <p class="text-[11px] text-stone-400">{{ \Carbon\Carbon::parse($p->tanggal_pesan)->format('d M Y, H:i') }}</p>

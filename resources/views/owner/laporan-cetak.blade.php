@@ -39,6 +39,17 @@
   <tr><td>Total Pendapatan</td><td class="kanan">Rp {{ number_format($ringkas['pendapatan'], 0, ',', '.') }}</td></tr>
 </table>
 
+<h2>Pendapatan per Metode Pembayaran</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th>Metode</th><th class="kanan">Jumlah Pesanan</th><th class="kanan">Total Pendapatan</th></tr>
+  @foreach ($ringkas['per_metode'] as $m)
+    <tr><td>{{ $m['label'] }}</td><td class="kanan">{{ number_format($m['pesanan'], 0, ',', '.') }}</td><td class="kanan">Rp {{ number_format($m['total'], 0, ',', '.') }}</td></tr>
+  @endforeach
+  @if ($ringkas['transfer_belum_lunas']['pesanan'] > 0)
+    <tr><td>Transfer Bank belum lunas (tidak dihitung)</td><td class="kanan">{{ number_format($ringkas['transfer_belum_lunas']['pesanan'], 0, ',', '.') }}</td><td class="kanan">Rp {{ number_format($ringkas['transfer_belum_lunas']['total'], 0, ',', '.') }}</td></tr>
+  @endif
+</table>
+
 <h2>Produk Terlaris, {{ $label }}</h2>
 @if ($terlaris->isEmpty())
   <div class="kosong">Tidak ada data penjualan pada periode ini.</div>
@@ -66,7 +77,7 @@
 @else
   <table border="1" cellspacing="0" cellpadding="4">
     <tr>
-      <th>Tanggal</th><th>No. Pesanan</th><th>Pelanggan</th><th>Jenis</th><th>Status</th><th class="kanan">Total</th>
+      <th>Tanggal</th><th>No. Pesanan</th><th>Pelanggan</th><th>Jenis</th><th>Status</th><th>Metode Bayar</th><th>Pembayaran</th><th class="kanan">Total</th>
     </tr>
     @foreach ($rincian as $r)
       <tr>
@@ -75,6 +86,8 @@
         <td>{{ $r->pelanggan ?? '-' }}</td>
         <td>{{ $r->jenis_fmt }}</td>
         <td>{{ $r->status_fmt }}</td>
+        <td>{{ $r->metode_fmt }}</td>
+        <td>{{ $r->bayar_fmt }}</td>
         <td class="kanan">Rp {{ number_format($r->total_harga, 0, ',', '.') }}</td>
       </tr>
     @endforeach

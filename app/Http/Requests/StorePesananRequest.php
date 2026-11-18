@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Pesanan;
 use Illuminate\Validation\Rule;
 
 class StorePesananRequest extends FormRequest
@@ -46,6 +47,17 @@ class StorePesananRequest extends FormRequest
 
             'jenis_pengambilan' => 'required|in:PICKUP,DELIVERY',
 
+            // Metode pembayaran wajib dipilih: TUNAI, QRIS, atau TRANSFER
+            'metode_pembayaran' => ['required', 'string', Rule::in(array_keys(Pesanan::METODE_PEMBAYARAN))],
+
+            // Bank tujuan wajib hanya untuk Transfer Bank
+            'bank_tujuan' => [
+                'nullable',
+                'required_if:metode_pembayaran,TRANSFER',
+                'string',
+                Rule::in(array_keys(Pesanan::BANK_TRANSFER)),
+            ],
+
             'items' => 'required|array|min:1',
             'items.*.id_produk' => 'required|exists:produk,id_produk',
             'items.*.jumlah' => 'required|integer|min:1|max:50',
@@ -62,6 +74,10 @@ class StorePesananRequest extends FormRequest
             'jam_ambil.date_format' => 'Format jam tidak valid.',
             'jenis_pengambilan.required' => 'Pilih jenis pengambilan.',
             'jenis_pengambilan.in' => 'Jenis pengambilan tidak valid.',
+            'metode_pembayaran.required' => 'Pilih metode pembayaran terlebih dahulu.',
+            'metode_pembayaran.in' => 'Metode pembayaran tidak valid. Pilih Tunai, QRIS, atau Transfer Bank.',
+            'bank_tujuan.required_if' => 'Pilih bank tujuan transfer (BCA, BRI, BNI, atau Mandiri).',
+            'bank_tujuan.in' => 'Bank tujuan tidak valid. Pilih BCA, BRI, BNI, atau Mandiri.',
             'no_telepon.required' => 'Nomor telepon wajib diisi.',
             'items.required' => 'Pesanan harus berisi minimal 1 produk.',
             'items.min' => 'Pesanan harus berisi minimal 1 produk.',

@@ -106,7 +106,7 @@
       <input type="hidden" name="tempat_pembayaran" value="TOKO">
       <input type="hidden" name="uang_diterima" value="{{ old('uang_diterima') }}" data-bayar-nilai>
 
-      <h2>Pembayaran Ambil di Toko</h2>
+      <h2>Pembayaran Ambil di Toko (Tunai)</h2>
       <p class="sub">Masukkan uang tunai yang diberikan pembeli. Kembalian dihitung otomatis.</p>
 
       <label for="uang-diterima">Uang diterima</label>
@@ -143,9 +143,10 @@
     <div class="info">
       <div class="baris"><span class="k">Pelanggan</span><span>: {{ $pelanggan }}</span></div>
       <div class="baris"><span class="k">Tgl Pesan</span><span>: {{ $tglPesanTeks }}</span></div>
-      @if ($pembayaran)
+      @if ($pembayaran || $nonTunaiLunas)
         <div class="baris"><span class="k">Transaksi</span><span>: {{ $waktuTeks }}</span></div>
       @endif
+      <div class="baris"><span class="k">Bayar</span><span>: {{ $labelBayar }}</span></div>
       <div class="baris"><span class="k">Staff</span><span>: {{ $staffNama ? $staffNama . ' (' . $staffPeran . ')' : $staffPeran }}</span></div>
       <div class="baris"><span class="k">Metode</span><span>: {{ $delivery ? 'Diantar kurir' : 'Ambil di toko' }}</span></div>
     </div>
@@ -181,6 +182,10 @@
         <div class="baris"><span>Pembayaran :</span><span>Tunai {{ $pembayaran->tempat_pembayaran === 'TOKO' ? 'di toko' : 'ke kurir' }}</span></div>
         <div class="baris"><span>Uang diterima :</span><span>{{ $rp($uangDiterima) }}</span></div>
         <div class="baris"><span>Kembalian :</span><span>{{ $rp($kembalian) }}</span></div>
+      @elseif ($nonTunaiLunas)
+        <div class="baris"><span>Pembayaran :</span><span>{{ $labelBayar }}</span></div>
+        <div class="baris"><span>Dibayar :</span><span>{{ $rp($total) }}</span></div>
+        <div class="baris"><span>Status :</span><span>LUNAS</span></div>
       @else
         @if ($bisaInputBayar)
           {{-- Pratinjau saat admin mengetik; tidak ikut tercetak sampai pembayaran disimpan --}}
@@ -188,7 +193,8 @@
           <div class="baris pratinjau"><span id="pv-label">Kembalian* :</span><span id="pv-kembalian">Rp0</span></div>
           <div class="pratinjau kecil">*pratinjau, belum disimpan</div>
         @endif
-        <div class="baris"><span>Status :</span><span>BELUM DIBAYAR</span></div>
+        <div class="baris"><span>Metode :</span><span>{{ $labelMetode }}</span></div>
+        <div class="baris"><span>Status :</span><span>{{ $statusBayarTeks }}</span></div>
       @endif
     </div>
 

@@ -132,6 +132,35 @@
   </div>
 </div>
 
+{{-- ========== Pendapatan per metode pembayaran ========== --}}
+<div class="bg-white rounded-2xl border border-warm shadow-sm overflow-hidden">
+  <div class="px-6 py-4 border-b border-stone-100">
+    <h3 class="font-serif text-xl font-bold text-stone-900">Pendapatan per Metode Pembayaran</h3>
+    <p class="text-xs text-stone-500">Pesanan Selesai (sudah lunas). Transfer Bank yang belum diverifikasi tidak dihitung.</p>
+  </div>
+  <table class="w-full text-sm">
+    <thead class="bg-[#F6F3EE] text-xs uppercase tracking-wider text-stone-500">
+      <tr><th class="px-6 py-3 text-left">Metode</th><th class="px-6 py-3 text-right">Jumlah Pesanan</th><th class="px-6 py-3 text-right">Total Pendapatan</th></tr>
+    </thead>
+    <tbody class="divide-y divide-stone-100">
+      @foreach ($ringkas['per_metode'] as $m)
+        <tr>
+          <td class="px-6 py-3 font-medium text-stone-800">{{ $m['label'] }}</td>
+          <td class="px-6 py-3 text-right text-stone-700">{{ number_format($m['pesanan'], 0, ',', '.') }}</td>
+          <td class="px-6 py-3 text-right font-bold text-stone-900">Rp {{ number_format($m['total'], 0, ',', '.') }}</td>
+        </tr>
+      @endforeach
+      @if ($ringkas['transfer_belum_lunas']['pesanan'] > 0)
+        <tr class="bg-amber-50/60">
+          <td class="px-6 py-3 font-medium text-amber-800">Transfer Bank belum lunas</td>
+          <td class="px-6 py-3 text-right text-amber-800">{{ number_format($ringkas['transfer_belum_lunas']['pesanan'], 0, ',', '.') }}</td>
+          <td class="px-6 py-3 text-right font-bold text-amber-800">Rp {{ number_format($ringkas['transfer_belum_lunas']['total'], 0, ',', '.') }} <span class="font-normal text-xs">(tidak dihitung)</span></td>
+        </tr>
+      @endif
+    </tbody>
+  </table>
+</div>
+
 {{-- ========== Produk terlaris (tabel) ========== --}}
 <section class="bg-white rounded-2xl border border-warm shadow-sm overflow-hidden">
   <div class="p-6 border-b border-stone-100">
@@ -181,6 +210,8 @@
           <th class="px-6 py-3 text-left">Pelanggan</th>
           <th class="px-6 py-3 text-left">Jenis</th>
           <th class="px-6 py-3 text-left">Status</th>
+          <th class="px-6 py-3 text-left">Metode Bayar</th>
+          <th class="px-6 py-3 text-left">Pembayaran</th>
           <th class="px-6 py-3 text-right">Total</th>
         </tr>
       </thead>
@@ -192,10 +223,12 @@
             <td class="px-6 py-3 text-stone-800">{{ $r->pelanggan ?? '-' }}</td>
             <td class="px-6 py-3 text-stone-600">{{ $r->jenis_fmt }}</td>
             <td class="px-6 py-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold {{ $r->status_pesanan === 'SELESAI' ? 'bg-emerald-50 text-emerald-700' : ($r->status_pesanan === 'DIBATALKAN' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700') }}">{{ $r->status_fmt }}</span></td>
+            <td class="px-6 py-3 text-stone-600 whitespace-nowrap">{{ $r->metode_fmt }}</td>
+            <td class="px-6 py-3 text-stone-600 whitespace-nowrap">{{ $r->bayar_fmt }}</td>
             <td class="px-6 py-3 text-right font-bold text-stone-900 whitespace-nowrap">Rp {{ number_format($r->total_harga, 0, ',', '.') }}</td>
           </tr>
         @empty
-          <tr><td colspan="6" class="px-6 py-10 text-center text-sm text-stone-500">Tidak ada pesanan pada periode ini.</td></tr>
+          <tr><td colspan="8" class="px-6 py-10 text-center text-sm text-stone-500">Tidak ada pesanan pada periode ini.</td></tr>
         @endforelse
       </tbody>
     </table>

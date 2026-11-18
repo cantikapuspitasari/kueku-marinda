@@ -27,7 +27,12 @@ class AdminDashboardController extends Controller
             'hari_ini'     => $jumlahHariIni,
             'selisih'      => $selisih,
             'menunggu'     => Pesanan::where('status_pesanan', 'PENDING')->count(),
-            'pendapatan'   => (clone $pesananHariIni)->sum('total_harga'),
+            // Pendapatan: pesanan QRIS/Transfer yang belum LUNAS tidak ikut dihitung
+            'pendapatan'   => Pesanan::whereDate('tanggal_pesan', $hariIni)->terhitungOmzet()->sum('total_harga'),
+            'transfer_menunggu' => Pesanan::where('metode_pembayaran', 'TRANSFER')
+                ->where('status_pembayaran', 'MENUNGGU_VERIFIKASI')
+                ->where('status_pesanan', '!=', 'DIBATALKAN')
+                ->count(),
             'produk_aktif' => Produk::where('status_produk', 'TERSEDIA')->count(),
             'stok_habis'   => Produk::where('status_produk', 'STOK_HABIS')->count(),
         ];

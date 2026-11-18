@@ -69,9 +69,25 @@ class StrukController extends Controller
 
         // Input uang diterima di halaman struk hanya untuk ADMIN pada pesanan Ambil di Toko yang belum dibayar.
         // (Pembayaran delivery diinput kurir dari panel kurir.)
+        // Metode pembayaran yang dipilih pembeli (TUNAI / QRIS)
+        $metode = $pesanan->metode_pembayaran ?: 'TUNAI';
+        $labelMetode = \App\Models\Pesanan::METODE_PEMBAYARAN[$metode] ?? $metode;
+
+        // QRIS dan Transfer Bank dibayar pembeli sendiri. Status LUNAS tersimpan di pesanan (bukan tabel pembayaran).
+        // Transfer yang masih BELUM_BAYAR / MENUNGGU_VERIFIKASI / DITOLAK TIDAK dianggap lunas.
+        $nonTunaiLunas = $pesanan->isNonTunai() && $pesanan->status_pembayaran === 'LUNAS';
+        $labelBayar = $pesanan->isTransfer() && $pesanan->bank_tujuan
+            ? 'Transfer Bank ' . $pesanan->bank_tujuan
+            : $labelMetode;
+        $statusBayarTeks = $pesanan->isNonTunai()
+            ? strtoupper(\App\Models\Pesanan::STATUS_PEMBAYARAN[$pesanan->statusBayar()] ?? 'BELUM BAYAR')
+            : 'BELUM DIBAYAR';
+
+        // Admin hanya menginput uang untuk pesanan TUNAI. QRIS dan Transfer tidak punya input uang.
         $bisaInputBayar = $akunStaf
             && $akunStaf->role === 'ADMIN'
             && ! $delivery
+            && ! $pesanan->isNonTunai()
             && ! $pembayaran
             && in_array($pesanan->status_pesanan, ['DIKONFIRMASI', 'DIPROSES', 'SELESAI'], true);
 
@@ -95,11 +111,16 @@ class StrukController extends Controller
             'uangDiterima'   => $uangDiterima,
             'kembalian'      => $kembalian,
             'bisaInputBayar' => $bisaInputBayar,
+            'metode'         => $metode,
+            'labelMetode'    => $labelMetode,
+            'nonTunaiLunas'  => $nonTunaiLunas,
+            'labelBayar'     => $labelBayar,
+            'statusBayarTeks' => $statusBayarTeks,
             'urlKembali'     => $urlKembali,
             'staffNama'  => $staffNama,
             'staffPeran' => $staffPeran,
             'pelanggan'  => $pesanan->pembeli->nama ?? '-',
-            'waktu'      => $pembayaran->tanggal_bayar ?? $pesanan->tanggal_pesan,
+            'waktu'      => $pembayaran->tanggal_bayar ?? $pesanan->waktu_bayar ?? $pesanan->tanggal_pesan,
         ]);
     }
 }

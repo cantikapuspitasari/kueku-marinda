@@ -49,6 +49,10 @@ class LacakController extends Controller
             'state'  => $hasil['state'],   // ok | menunggu | batal
             'tahap'  => $hasil['tahap'],   // 0..4 (atau -1)
             'kurir'  => $kurir,
+            'metode' => $p->metode_pembayaran ?? 'TUNAI',
+            'lunas'  => ($p->status_pembayaran ?? null) === 'LUNAS',
+            'status_bayar' => $p->status_pembayaran ?? 'BELUM_BAYAR',
+            'bank'   => $p->bank_tujuan ?? null,
         ]);
     }
 }

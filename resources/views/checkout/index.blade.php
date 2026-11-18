@@ -196,6 +196,47 @@
           <p class="mt-3 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Pesanan diproses minimal {{ \App\Http\Controllers\PesananController::MIN_JAM_PROSES }} jam sebelum diambil/dikirim.</p>
         </div>
       </div>
+
+      {{-- Metode pembayaran (wajib dipilih) --}}
+      <div class="bg-white rounded-2xl border border-[#e6dccb] shadow-sm p-6" id="metode-bayar">
+        <h2 class="text-base font-semibold text-stone-800 mb-1">Pilih metode pembayaran</h2>
+        <p class="text-xs text-stone-500 mb-4">Wajib dipilih sebelum pesanan dibuat.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Metode pembayaran">
+          @foreach (\App\Models\Pesanan::METODE_PEMBAYARAN as $kodeMetode => $labelMetode)
+            <label class="relative cursor-pointer">
+              <input type="radio" name="metode_pembayaran" value="{{ $kodeMetode }}" class="peer sr-only">
+              <div class="rounded-xl border border-[#d8cdb8] bg-[#fcf9f4] px-4 py-3.5 text-center transition-all peer-checked:border-[#993a3c] peer-checked:bg-[#993a3c]/5 peer-checked:ring-2 peer-checked:ring-[#993a3c]/30 peer-focus-visible:ring-2 peer-focus-visible:ring-[#993a3c]/40 hover:border-[#993a3c]/60">
+                <span class="block text-sm font-semibold text-stone-800">{{ $labelMetode }}</span>
+                <span class="block text-[11px] text-stone-500 mt-0.5">
+                  @if ($kodeMetode === 'TUNAI') Bayar langsung saat pesanan diterima/diambil
+                  @elseif ($kodeMetode === 'QRIS') Scan QR Code lewat HP
+                  @else Transfer ke rekening toko, unggah bukti, diverifikasi Admin
+                  @endif
+                </span>
+              </div>
+            </label>
+          @endforeach
+        </div>
+
+        {{-- Bank tujuan: hanya muncul bila memilih Transfer Bank --}}
+        <div id="blok-bank" class="hidden mt-4 pt-4 border-t border-[#e6dccb]">
+          <h3 class="text-sm font-semibold text-stone-800 mb-1">Pilih bank tujuan</h3>
+          <p class="text-xs text-stone-500 mb-3">Nomor rekening ditampilkan setelah pesanan dibuat.</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" role="radiogroup" aria-label="Bank tujuan transfer">
+            @foreach (\App\Models\Pesanan::BANK_TRANSFER as $kodeBank => $infoBank)
+              <label class="relative cursor-pointer">
+                <input type="radio" name="bank_tujuan" value="{{ $kodeBank }}" class="peer sr-only">
+                <div class="rounded-xl border border-[#d8cdb8] bg-[#fcf9f4] px-3 py-3 text-center transition-all peer-checked:border-[#993a3c] peer-checked:bg-[#993a3c]/5 peer-checked:ring-2 peer-checked:ring-[#993a3c]/30 peer-focus-visible:ring-2 peer-focus-visible:ring-[#993a3c]/40 hover:border-[#993a3c]/60">
+                  <span class="block text-sm font-bold text-stone-800">{{ $kodeBank }}</span>
+                  <span class="block text-[11px] text-stone-500">{{ $infoBank['nama'] }}</span>
+                </div>
+              </label>
+            @endforeach
+          </div>
+        </div>
+
+        <p class="mt-3 text-xs text-stone-500">QRIS: QR Code ditampilkan setelah pesanan dibuat. Transfer Bank: rekening tujuan dan kolom unggah bukti ditampilkan setelah pesanan dibuat.</p>
+      </div>
     </section>
 
     <!-- KANAN -->
@@ -545,6 +586,12 @@ document.getElementById("btn-next").addEventListener("click", () => {
   if (!msg && phone.length < 9) msg = "No. handphone / WhatsApp wajib diisi dengan benar.";
   if (!msg && !date) msg = "Tanggal belum dipilih.";
   if (!msg && !time) msg = "Belum ada jam yang tersedia. Pilih tanggal lain.";
+  const metodeEl = document.querySelector('input[name="metode_pembayaran"]:checked');
+  const metodeBayar = metodeEl ? metodeEl.value : "";
+  if (!msg && !["TUNAI", "QRIS", "TRANSFER"].includes(metodeBayar)) msg = "Pilih metode pembayaran terlebih dahulu (Tunai, QRIS, atau Transfer Bank).";
+  const bankEl = document.querySelector('input[name="bank_tujuan"]:checked');
+  const bankTujuan = (metodeBayar === "TRANSFER" && bankEl) ? bankEl.value : null;
+  if (!msg && metodeBayar === "TRANSFER" && !bankTujuan) msg = "Pilih bank tujuan transfer (BCA, BRI, BNI, atau Mandiri).";
   if (!msg && time) {
     // cek ulang aturan 3 jam (waktu terus berjalan sejak halaman dibuka)
     if (wibToMs(date, hm(time)) < nowMs() + MIN_JAM * 3600 * 1000) {
@@ -587,6 +634,8 @@ document.getElementById("btn-next").addEventListener("click", () => {
       ongkir_token: mode === "kurir" ? ongkirToken : null,
       tanggal_ambil: date,
       jam_ambil: time,
+      metode_pembayaran: metodeBayar,
+      bank_tujuan: bankTujuan,
       items: items
     })
   }).then(async res => {
@@ -613,7 +662,11 @@ document.getElementById("btn-next").addEventListener("click", () => {
       cart: cartNow
     };
     try { localStorage.setItem("kueku_last_order", JSON.stringify(order)); localStorage.removeItem(CART_KEY); } catch (e) {}
-    window.location.href = "{{ url('/pesanan/selesai') }}";
+    // QRIS: halaman QR Code. Transfer Bank: halaman rekening & unggah bukti. Tunai: halaman pesanan terkonfirmasi.
+    window.location.href =
+      (data.metode_pembayaran === "QRIS" && data.qris_url) ? data.qris_url :
+      (data.metode_pembayaran === "TRANSFER" && data.transfer_url) ? data.transfer_url :
+      "{{ url('/pesanan/selesai') }}";
   }).catch(e => {
     err.textContent = e.message;
     err.classList.remove("hidden");
@@ -635,6 +688,14 @@ document.getElementById("address").addEventListener("change", () => {
 initPeta();
 if (!peta) info("Peta gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.", "err");
 setMode("kurir");
+
+// Pilihan bank tampil hanya saat metode Transfer Bank dipilih
+document.querySelectorAll('input[name="metode_pembayaran"]').forEach(function (r) {
+  r.addEventListener("change", function () {
+    const dipilih = document.querySelector('input[name="metode_pembayaran"]:checked');
+    document.getElementById("blok-bank").classList.toggle("hidden", !dipilih || dipilih.value !== "TRANSFER");
+  });
+});
 </script>
 </body>
 </html>

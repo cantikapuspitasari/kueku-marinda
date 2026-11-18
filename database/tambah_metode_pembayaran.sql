@@ -1,0 +1,2 @@
+-- FILE LAMA, JANGAN DIJALANKAN.
+-- Diganti oleh database/qris_simulasi.sql (sudah mencakup semua perubahan, tanpa metode TRANSFER).

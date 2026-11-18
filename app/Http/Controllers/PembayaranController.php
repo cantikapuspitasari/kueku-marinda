@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class PembayaranController extends Controller
 {
-    // Mencatat pembayaran tunai untuk sebuah pesanan
+    // Mencatat pembayaran TUNAI untuk sebuah pesanan
+    // (QRIS dan Transfer Bank tidak dicatat sebagai tunai: lihat QrisController dan TransferController)
     // - PICKUP   : dicatat Admin di toko
     // - DELIVERY : dicatat Kurir yang mengantar pesanan tersebut
     // Uang diterima divalidasi di sini, kembalian SELALU dihitung ulang di server
@@ -40,6 +41,19 @@ class PembayaranController extends Controller
                 if (in_array($pesanan->status_pesanan, ['PENDING', 'DIBATALKAN'])) {
                     throw new \DomainException(
                         "Pesanan berstatus {$pesanan->status_pesanan} belum bisa dibayar"
+                    );
+                }
+
+                // QRIS dan Transfer Bank dibayar pembeli sendiri, bukan dicatat staf sebagai tunai
+                if ($pesanan->isQris()) {
+                    throw new \DomainException(
+                        'Pesanan ini dibayar lewat QRIS. Pembayaran dikonfirmasi pembeli melalui scan QR Code.'
+                    );
+                }
+
+                if ($pesanan->isTransfer()) {
+                    throw new \DomainException(
+                        'Pesanan ini dibayar lewat Transfer Bank. Pembayaran menjadi LUNAS setelah bukti transfer diverifikasi di menu Pembayaran Transfer.'
                     );
                 }
 
@@ -82,7 +96,7 @@ class PembayaranController extends Controller
                 }
 
                 // Cegah pembayaran dua kali
-                if ($pesanan->pembayaran()->exists()) {
+                if ($pesanan->sudahDibayar()) {
                     throw new \DomainException(
                         'Pesanan ini sudah tercatat pembayarannya'
                     );
@@ -108,6 +122,12 @@ class PembayaranController extends Controller
                     'uang_diterima'     => $diterima,
                     'kembalian'         => $kembalian,
                     'tempat_pembayaran' => $validated['tempat_pembayaran'],
+                ]);
+
+                // Tandai LUNAS pada pesanan (dipakai admin untuk melihat status pembayaran)
+                $pesanan->update([
+                    'status_pembayaran' => 'LUNAS',
+                    'waktu_bayar'       => now(),
                 ]);
 
                 // Pickup dibayar di toko, langsung selesai
