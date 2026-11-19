@@ -27,6 +27,7 @@ use App\Http\Controllers\KurirController;
 use App\Http\Controllers\StrukController;
 use App\Http\Controllers\QrisController;
 use App\Http\Controllers\TransferController;
+use App\Http\Controllers\AdminTransaksiController;
 use App\Http\Controllers\AdminTransferController;
 
 // ---------- Halaman utama ----------
@@ -250,6 +251,10 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 
     Route::patch('admin/pesanan/{id}/maju', [AdminPesananController::class, 'maju'])
         ->name('admin.pesanan.maju');
+
+    // Riwayat Transaksi (filter metode pembayaran + status, total terfilter)
+    Route::get('admin/transaksi', [AdminTransaksiController::class, 'index'])
+        ->name('admin.transaksi.index');
 
     // Verifikasi Pembayaran Transfer Bank
     Route::get('admin/transfer', [AdminTransferController::class, 'index'])
