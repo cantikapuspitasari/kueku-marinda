@@ -7,22 +7,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Kolom jam_ambil sudah dibuat oleh migration 2026_11_12_085858.
+     * Migration ini hanya memastikan kolom ada, supaya tidak error "duplicate column".
      */
     public function up(): void
     {
-        Schema::table('pesanan', function (Blueprint $table) {
-            $table->time('jam_ambil')->nullable()->after('tanggal_ambil');
-        });
+        if (! Schema::hasColumn('pesanan', 'jam_ambil')) {
+            Schema::table('pesanan', function (Blueprint $table) {
+                $table->time('jam_ambil')->nullable()->after('tanggal_ambil');
+            });
+        }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('pesanan', function (Blueprint $table) {
-            $table->dropColumn('jam_ambil');
-        });
+        // Kolom dimiliki migration 2026_11_12_085858, jadi tidak dihapus di sini.
     }
 };
